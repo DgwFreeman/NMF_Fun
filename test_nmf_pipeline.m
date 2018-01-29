@@ -129,12 +129,97 @@ end
 
 
 %% Troubleshooting / Plotting
-% figure
+
+% Compare noisy data with pristine data & factorized representation for
+% first trial of the training set
+offset = 0;
+figure
+for ii = 1:4
+    %Display the noisey pattern that was factorized
+    NoisyPattern = X_train(:,offset+(1:nBins)); 
+    
+    subplot(4,3,(ii-1)*3+1)
+    imagesc(NoisyPattern)
+    ylabel('Neuron ID')
+    title(sprintf('Pattern %u with 50%% noise',ii))
+    colorbar
+    caxis([8,18])
+    if ii == 4, xlabel('Time (ms)');end
+    
+    %Display the data without noise
+    Pattern_NoNoise = data(1).counts{ii}{ind_train(1)};
+    
+    subplot(4,3,(ii-1)*3+2)
+    imagesc(Pattern_NoNoise)
+    title(sprintf('Pattern %u with no noise',ii))
+    colorbar
+    caxis([8,18])
+    if ii == 4, xlabel('Time (ms)');end
+    
+    %Get the activation coefficients for this particular sample
+    P = Wi*Acal_train(:,:,(ii-1)*10+1)*Wb;
+    Pattern_NMF = P';
+    
+    subplot(4,3,(ii-1)*3+3)
+    imagesc(Pattern_NMF)
+    title(sprintf('Pattern %u factorized Representation',ii))
+    colorbar
+    caxis([8,18])
+    if ii == 4, xlabel('Time (ms)');end
+    
+    Err = norm(NoisyPattern-Pattern_NMF,'fro')^2;
+    
+    %shift offset to get the first trial of the next pattern in X_train/X_test
+    offset = offset + 300; 
+end
+
+% Compare noisy data with pristine data & factorized representation for
+% first trial of the test set
+offset = 0;
+figure
+for ii = 1:4
+    %Display the noisey pattern that was factorized
+    NoisyPattern = X_test(:,offset+(1:nBins)); 
+    
+    subplot(4,3,(ii-1)*3+1)
+    imagesc(NoisyPattern)
+    ylabel('Neuron ID')
+    title(sprintf('Pattern %u with 50%% noise',ii))
+    colorbar
+    caxis([8,18])
+    if ii == 4, xlabel('Time (ms)');end
+    
+    %Display the data without noise
+    Pattern_NoNoise = data(1).counts{ii}{ind_test(1)};
+    
+    subplot(4,3,(ii-1)*3+2)
+    imagesc(Pattern_NoNoise)
+    title(sprintf('Pattern %u with no noise',ii))
+    colorbar
+    caxis([8,18])
+    if ii == 4, xlabel('Time (ms)');end
+    
+    %Get the activation coefficients for this particular sample
+    P = Wi*Acal_test(:,:,(ii-1)*10+1)*Wb;
+    Pattern_NMF = P';
+    
+    subplot(4,3,(ii-1)*3+3)
+    imagesc(Pattern_NMF)
+    title(sprintf('Pattern %u factorized Representation',ii))
+    colorbar
+    caxis([8,18])
+    if ii == 4, xlabel('Time (ms)');end
+    
+    Err = norm(NoisyPattern-Pattern_NMF,'fro')^2;
+    
+    %shift offset to get the first trial of the next pattern in X_train/X_test
+    offset = offset + 300; 
+end
 % for ii = 1:4
-%     subplot(2,2,1)
-%     imagesc(counts{13,1}{1,1})
+%     subplot(2,2,ii)
+%     imagesc(data(4).counts{ii,1}{1,1})
 %     xlabel('Time');ylabel('Neuron ID')
-%     title('Pattern 1 with 50% noise')
+%     title(sprintf('Pattern %u with 50 %% noise',ii))
 %     colorbar
 %     caxis([8,18])
 % end
