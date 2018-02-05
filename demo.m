@@ -115,29 +115,30 @@ groups_test = ceil((1:n_e_test)' / length(ind_train));
 clear offset i j;
 
 %% Apply spatiotemporal NMF to factorize data
-% disp(['Optimizing number of spatiotemporal modules.'...
-%     ' This can take a while...']);
-% 
-% % Find optimal number of spatiotemporal modules
+disp(['Optimizing number of spatiotemporal modules.'...
+    ' This can take a while...']);
+
+% Find optimal number of spatiotemporal modules
 % n_m = select_n_m(X_train,groups_train,n_e_train,X_test,groups_test,...
 %     n_e_test);
-% 
-% % Obtain spatiotemporal modules from training set
-% [Acal_train,Wst] = stnmf(X_train,n_m,n_e_train);
-% disp(['Found ' int2str(n_m) ' spatiotemporal modules.']);
-% 
-% % Obtain activation coefficients from test set for given modules
-% Acal_test = stnmf(X_test,n_m,n_e_test,Wst);
-% 
-% % Process activation coefficients for classification
-% predictors_train = Acal_train';
-% predictors_test = Acal_test';
-% 
-% % Get classification performance on training and test sets
-% [cc_st_train,cc_st_test] = ldacc(predictors_train,groups_train,...
-%     predictors_test,groups_test);
-% 
-% clear n_m Acal_train Acal_test predictors_train predictors_test;
+n_m=4;
+
+% Obtain spatiotemporal modules from training set
+[Acal_train,Wst] = stnmf(X_train,n_m,n_e_train);
+disp(['Found ' int2str(n_m) ' spatiotemporal modules.']);
+
+% Obtain activation coefficients from test set for given modules
+Acal_test = stnmf(X_test,n_m,n_e_test,Wst);
+
+% Process activation coefficients for classification
+predictors_train = Acal_train';
+predictors_test = Acal_test';
+
+% Get classification performance on training and test sets
+[cc_st_train,cc_st_test] = ldacc(predictors_train,groups_train,...
+    predictors_test,groups_test);
+
+clear n_m Acal_train Acal_test predictors_train predictors_test;
 
 %% Apply space-by-time NMF to factorize data
 disp(['Optimizing numbers of temporal and spatial modules.'...

@@ -222,6 +222,16 @@ for s=1:n_e
        end
     end
 end
+% for ss = 1:n_e
+%     %Loop over # of temporal & spatial modules
+%     for ii = 1:n_tm
+%         cA = norm(A(ii,(n_sm*(ss-1)+1):(n_sm*(ss-1)+n_sm)));
+%         for jj = 1:n_sm
+% %             rA = norm(A(:,n_sm*(ss-1)+jj));
+%             A(ii,n_sm*(ss-1)+jj) = A(ii,n_sm*(ss-1)+jj)/(cA);
+%         end
+%     end
+% end
 
 end % normalize_output
 
