@@ -12,8 +12,8 @@
 clear all
 plot_figs = 0;
 nNeurons = 20;
-nTrials = 20; 
-nBins = 100; 
+nTrials = 20;
+nBins = 100;
 nPatterns = 4;
 nStimuli = 4;
 
@@ -85,84 +85,209 @@ for iN = 1:nNoise
         data(iN,iC).counts = counts;
         data(iN,iC).noise = noise(iN);
         data(iN,iC).fCoding = fCoding(iC);
-
+        
     end
     
 end
 
 %% Randomly separate data into training set and test set
+% Leave 1 out cross-validation
 % Random permutation of trials
-p = randperm(nTrials); 
+pTrials = randperm(nTrials);
+%Start index at end of vector of trial indices to chose from
+TestIndex = length(pTrials);
 
-% Training indices
-ind_train = p(1:ceil(nTrials/2));
-% Test indices
-ind_test = p((ceil(nTrials/2)+1):end);
+% % Training indices
+% ind_train = p(1:ceil(nTrials/2));
+% % Test indices
+% ind_test = p((ceil(nTrials/2)+1):end);
 
 % Total number of training samples
-n_e_train = nStimuli*length(ind_train);
+n_e_train = nStimuli*(length(pTrials)-1);
 % Total number of test samples
-n_e_test = nStimuli*length(ind_test);
+n_e_test = nStimuli;
 
 %% Loop over different noise conditions and calculate performance for each
 %Save factorized representation
-SpatialModules = cell(nSessions,1);
-TestCoeff = cell(nSessions,1);
-TrainCoeff = cell(nSessions,1);
+SpatialModules = cell(nNoise,nCoding);
+TestCoeff = cell(nNoise,nCoding);
+TrainCoeff = cell(nNoise,nCoding);
+kFeat = zeros(nNoise,nCoding);
+ctr = zeros(nNoise,nCoding);
+cte = zeros(nNoise,nCoding);
+mean_fCorr = cell(nNoise,nCoding);
+std_fCorr = cell(nNoise,nCoding); 
+mean_tcCorr = cell(nNoise,nCoding);
+std_tcCorr = cell(nNoise,nCoding);
 
-% load('Dataset_20180205.mat');
+load('Dataset_20180207.mat');
 for iN = 1:nNoise
     fprintf('Concatenating data for %u%% noise level...\n',int16(noise(iN)*100));
     tStart = tic;
     for iC = 1:nCoding
         fprintf('\t %u%% non-coding patterns introduced...\n',int16(fCoding(iC)*100));
         
-        %% Build overall data matrices
+        % Build overall data matrices
         X_train = zeros(nNeurons,n_e_train*nBins);
         X_test = zeros(nNeurons,n_e_test*nBins);
-        offset = 0;
-        for iStim = 1:nStimuli
-            for iTrial = 1:length(ind_train)
-                X_train(:,offset+(1:nBins)) = data(iN,iC).counts{iStim}{ind_train(iTrial)};
-                X_test(:,offset+(1:nBins)) = data(iN,iC).counts{iStim}{ind_test(iTrial)};
+        groups_train = zeros(n_e_train*nBins,1);
+        groups_test = zeros(n_e_test*nBins,1);
+        
+        %% Leave 1 Out cross validation
+        %Loop over each "leave 1 out" interation of the cross-validation
+        %algorithm to obtain the best k based on the decoding performance
+        for iCross = 1:length(pTrials)
+            offset_train = 0;
+            offset_test = 0;
+            
+            %Loop over the different stiumuli & trials to create matrices
+            for iStim = 1:nStimuli
+                for iTrial = 1:length(pTrials)
+                    if iTrial ~= TestIndex
+                        X_train(:,offset_train+(1:nBins)) = data(iN,iC).counts{iStim}{pTrials(iTrial)};
+                        %Training Class labels
+                        groups_train(offset_train+(1:nBins),1) = iStim;
+                        %Update offset for training matrix
+                        offset_train = offset_train + nBins;
+                    end
+                end
                 
-                % Training & Test class labels
-                groups_train(offset+(1:nBins),1) = iStim;
-                groups_test(offset+(1:nBins),1) = iStim;
+                X_test(:,offset_test+(1:nBins)) = data(iN,iC).counts{iStim}{pTrials(TestIndex)};
+                %Test class labels
+                groups_test(offset_test+(1:nBins),1) = iStim;
                 
-                offset = offset + nBins;
+                %Update offset for test matrix
+                offset_test = offset_test + nBins;
             end
+            %Find Optimal number of spatial modules for this particular
+            %training/test set combo
+            [DCperf(iCross,1), K_cv(iCross,1)] = select_k(X_train,groups_train,X_test,groups_test);
+            
+            %Update which trial is used for testing
+            TestIndex = TestIndex - 1;
         end
         
-        %Find Optimal number of spatial modules
-        k = select_k(X_train,groups_train,n_e_train,X_test,groups_test,n_e_test);
-        kVec(iN,iC) = k;
+        %Out of all of the "Leave 1 out" iterations, which one resulted in
+        %the best decoding performance?
+        [DCmax,iK] = max(DCperf(:));
+        kFeat(iN,iC) = K_cv(iK);
+        TestIndex = iK;
         
-        % Decompose training set
-        [W_train,H_train,err] = nmf(X_train,k);
+        %Re-create the training and test matrices that resulted in the best
+        %decoding performance
+        offset_train = 0;
+        offset_test = 0;
+        for iStim = 1:nStimuli
+            for iTrial = 1:length(pTrials)
+                if iTrial ~= TestIndex
+                    X_train(:,offset_train+(1:nBins)) = data(iN,iC).counts{iStim}{pTrials(iTrial)};
+                    %Training Class labels
+                    groups_train(offset_train+(1:nBins),1) = iStim;
+                    %Update offset for training matrix
+                    offset_train = offset_train + nBins;
+                end
+            end
+            
+            X_test(:,offset_test+(1:nBins)) = data(iN,iC).counts{iStim}{pTrials(TestIndex)};
+            %Test class labels
+            groups_test(offset_test+(1:nBins),1) = iStim;
+            
+            %Update offset for test matrix
+            offset_test = offset_test + nBins;
+        end
         
-        % Obtain test set activation coefficients for given modules
-        [~,H_test,~] = nmf(X_test,k,W_train);
+        %% Decompose the data now using the k value found in the cross-validation algorithm
+        % Run NMF multiple times to average decoding performance
+        nNMFruns = 10;
+        %Calculate the squared error of each run 
+        sqerr_tr = zeros(nNMFruns,1);
+        sqerr_te = zeros(nNMFruns,1);
+        %Compare Features and Coefficients between runs of the nmf
+        rrFeatures = cell(nNMFruns,1);
+        rrTestCoeff = cell(nNMFruns,1);
+        rrTrainCoeff = cell(nNMFruns,1);
+        %Compare the decoding performance between each run
+        rr_ctr = zeros(nNMFruns,1);
+        rr_cte = zeros(nNMFruns,1);
         
-        %Save factorized representation of data
-        SpatialModules{iN,iC} = W_train;
-        TestCoeff{iN,iC} = H_test;
-        TrainCoeff{iN,iC} = H_train;
+        for indy = 1:nNMFruns
+            % Decompose training set
+            [W_train,H_train,err] = nmf(X_train,kFeat(iN,iC));
+            
+            % Obtain test set activation coefficients for given modules
+            [~,H_test,~] = nmf(X_test,kFeat(iN,iC),W_train);
+            
+            %Calculate Squared Error
+            sqerr_tr(indy) = norm((X_train - W_train*H_train).^2,'fro');
+            sqerr_te(indy) = norm((X_test - W_train*H_test).^2,'fro');
+            
+            % Process activation coefficients for classification
+            predictors_train = H_train';
+            predictors_test = H_test';
+            [cc_train,cc_test] = ldacc(predictors_train,groups_train,predictors_test,groups_test);
+            
+            %Save factorized representation of data
+            rrFeatures{indy,1} = W_train;
+            rrTestCoeff{indy,1} = H_test;
+            rrTrainCoeff{indy,1} = H_train;
+            
+            %Save Decoding Performance
+            rr_ctr(indy,1) = cc_train;
+            rr_cte(indy,1) = cc_test;
+        end
         
-        % Process activation coefficients for classification
-        predictors_train = H_train';
-        predictors_test = H_test';
-        [cc_train,cc_test] = ldacc(predictors_train,groups_train,predictors_test,groups_test);
+        %Save factorized representation of data with the smallest SE
+        [~,indy] = min(sqerr_te);       
+        SpatialModules{iN,iC} = rrFeatures{indy,1};
+        TestCoeff{iN,iC} = rrTestCoeff{indy,1};
+        TrainCoeff{iN,iC} = rrTrainCoeff{indy,1};
         
-        ctr(iN,iC) = cc_train;
-        cte(iN,iC) = cc_test;
+        %Take the average decoding performance out of the reruns
+        ctr(iN,iC) = mean(rr_ctr);
+        cte(iN,iC) = mean(rr_cte);
         
-        % feature extraction
-        %     feMethod='nmf';
-        %     optionFE.facts=3;
-        %     [trainExtr,outTrain]=featureExtractionTrain(trainSet,[],trainClass,feMethod,optionFE);
-        %     [testExtr,outTest]=featureExtrationTest(trainSet,testSet,outTrain);
+        %% Determine how correlated each NMF run is with each other
+        featureCorr = zeros(kFeat(iN,iC),kFeat(iN,iC));
+        fCorr = zeros(kFeat(iN,iC),1);
+        tcCorr = zeros(kFeat(iN,iC),1);
         
+        %Mean and standard deviation of the features between runs
+        m_fCorr = NaN(nNMFruns);
+        s_fCorr = NaN(nNMFruns);
+        m_tcCorr = NaN(nNMFruns);
+        s_tcCorr = NaN(nNMFruns);
+        
+        for ii = 1:nNMFruns
+            aFeatures = rrFeatures{ii};
+            aTestCoeff = rrTestCoeff{ii};
+            for jj = 1:nNMFruns
+                bFeatures = rrFeatures{jj};
+                bTestCoeff = rrTestCoeff{jj};
+                
+                %Find the features between iFeatures & jFeatures that correspond
+                for iK = 1:kFeat(iN,iC)
+                    for jK = 1:kFeat(iN,iC)
+                        featureCorr(iK,jK) = corr2(aFeatures(:,iK),bFeatures(:,jK));
+                    end
+                    %Calculate the max correlation of each feature in aFeatures with
+                    %that of each feature in bFeatures & the corresponding index
+                    [fCorr(iK), iCorr(iK)] = max(featureCorr(iK,:));
+                    
+                    tcCorr(iK) = corr2(aTestCoeff(iK,:),bTestCoeff(iCorr(iK),:));
+                end
+                
+                m_fCorr(ii,jj) = mean(fCorr);
+                s_fCorr(ii,jj) = std(fCorr);
+                
+                m_tcCorr(ii,jj) = mean(tcCorr);
+                s_tcCorr(ii,jj) = std(tcCorr);
+            end
+        end
+
+       mean_fCorr{iN,iC} = m_fCorr;
+       std_fCorr{iN,iC} = s_fCorr;
+       mean_tcCorr{iN,iC} = m_tcCorr;
+       std_tcCorr{iN,iC} = s_tcCorr;
         %% Optional Plotting
         if plot_figs == 1
             figure
@@ -209,10 +334,10 @@ for iN = 1:nNoise
                 offset = offset + nBins*nTrials/2;
             end
         end
-            
+        
     end
     tElapsed = toc(tStart);
-    fprintf('Time Elapsed for %u%% Noise Level: %3.3f\n',int16(noise(iN)*100), tElapsed);
+    fprintf('Time Elapsed for %u%% Noise Level: %3.3f mins\n',int16(noise(iN)*100), tElapsed/60);
 end
 
 %% Troubleshooting / Plotting
@@ -222,7 +347,7 @@ end
 cc = hsv(nNoise);
 for iN = 1:nNoise
     fprintf('Plotting %u%% noise level...\n',int16(noise(iN)*100));
-  
+    
     for iC = 1:nCoding
         fprintf('\t %u%% non-coding patterns introduced...\n',int16(fCoding(iC)*100));
         
@@ -268,7 +393,7 @@ for iN = 1:nNoise
         xlabel('Time(ms)')
         ylabel('Neuron ID')
         
-            
+        
         
     end
 end
@@ -309,9 +434,9 @@ for iN = 1:nNoise
     fprintf('Plotting %u%% noise level...\n',int16(noise(iN)*100));
     figure
     for iC = 1:nCoding
-     
+        
         Coeff = TestCoeff{iN,iC};
-        for iM = 1:kVec(iN,iC)
+        for iM = 1:kFeat(iN,iC)
             plot(tvec,Coeff(iM,:),'-','Color',cc(iC,:)),hold on
         end
         
@@ -351,4 +476,23 @@ for iP = 1:k
     subplot(k,3,iP*3)
     plot(tvec,H_Test(iP,:),'-','LineWidth',2)
 end
+
+
+
+          figure
+            ss = sprintf('Noise Level: %u%% -- Non-Coding Percentage: %u%% ',int16(noise(iN)*100),int16(fCoding(iC)*100));
+            suptitle(ss);
     
+            imagesc(mean_fCorr)
+            colorbar
+            caxis([0.5,1])
+            title('Mean Correlation of Features between NMF runs');
+            xlabel('Run j'); ylabel('Run i');
+            
+            
+            subplot(1,2,2)
+            imagesc(std_fCorr)
+            colorbar
+            caxis([0,1])
+            title('Std Correlation of Features between NMF runs');
+            xlabel('Run j'); ylabel('Run i');

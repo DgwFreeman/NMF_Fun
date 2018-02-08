@@ -1,4 +1,4 @@
-function n_m = select_k(X_train,groups_train,n_e_train,X_test,groups_test,n_e_test)
+function [DCmax, n_m] = select_k(X_train,groups_train,X_test,groups_test)
 % Selects the optimal number of spatiotemporal modules.
 % Input arguments:
 %  X_train      - Training input matrix (size #cells
@@ -60,7 +60,7 @@ for iK = 1:length(k_range)
         
 end
 
-[~,iK] = max(cte(:));
+[DCmax,iK] = max(cte(:));
 n_m = k_range(iK);
 
 end
