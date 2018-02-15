@@ -10,118 +10,116 @@
 % Date: 1/24/18
 %% Parameters
 clear all
-plot_figs = 0;
-nNeurons = 20;
-nTrials = 20;
-nBins = 100;
-nPatterns = 4;
-nStimuli = 4;
+% plot_figs = 0;
+% nNeurons = 20;
+% nTrials = 20;
+% nBins = 100;
+% nPatterns = 4;
+% nStimuli = 4;
+% 
+% %Gaussian noise to add to each pattern as a % of the sigma_rate
+% noise = 0:0.1:1;
+% noise = [noise, [1.5, 2, 2.5, 3]];
+% nNoise = length(noise);
+% 
+% %Fraction of non-coding patterns into stimulus presentation
+% fCoding = 0:0.06:0.84;
+% nCoding = length(fCoding);
+% nSessions = nCoding + nNoise;
+% 
+% %Create matrix for synthetic data
+% counts = cell(nStimuli,1);
+% trials = cell(nTrials,1);
+% 
+% %% Create Synthetic Data
+% % What is a reasonable mean firing rate and its standard deviation?
+% mean_rate = 10;
+% sigma_rate = 5;
+% 
+% %Parameters of log-normal distribution
+% mu = log(mean_rate^2/sqrt(sigma_rate + mean_rate^2));
+% sigma = sqrt(log(sigma_rate/mean_rate^2 + 1));
+% 
+% %Draw 4 patterns of the firing rates of 100 neurons from the log-normal distribution
+% for ii = 1:nPatterns
+%     Patterns{ii,1} = lognrnd(mu,sigma,nNeurons,1);
+% end
+% 
+% CountMatrix = zeros(nNeurons,nBins);
+% data = repmat(struct,nNoise,nCoding);
+% for iN = 1:nNoise
+%     for iC = 1:nCoding
+%         fprintf('Creating simulated data for %u%% noise & %u%% non-coding patterns...\n',int16(noise(iN)*100),int16(fCoding(iC)*100));
+%         for iStim = 1:nStimuli
+%             %Which Pattern to select
+%             iP = mod(iStim-1,4) + 1;
+%             
+%             %Base Firing Rate Pattern
+%             RatePattern = Patterns{iP};
+%             
+%             %For each neuron and time step, add gaussian noise
+%             for iTrial = 1:nTrials
+%                 %Additive Noise same across all patterns for each trial
+%                 CountMatrix = repmat(RatePattern,1,nBins) + noise(iN)*sigma_rate*randn(nNeurons,nBins);
+%                 
+%                 %Randomly insert "non-coding" patterns into the trial based off
+%                 %the fraction of coding patterns variable fCoding
+%                 nncBins = int8(fCoding(iC)*nBins);
+%                 p = randperm(nBins);
+%                 ind_nc = p(1:nncBins);
+%                 for iNC = 1:length(ind_nc)
+%                     NonCodingPattern = lognrnd(mu,sigma,nNeurons,1) + noise(iN)*sigma_rate*randn(nNeurons,1);
+%                     CountMatrix(:,ind_nc(iNC)) = NonCodingPattern;
+%                 end
+%                 
+%                 %Set negative values to 0
+%                 negPos = CountMatrix < 0;
+%                 CountMatrix(negPos) = 0;
+%                 
+%                 trials{iTrial,1} = CountMatrix;
+%             end
+%             counts{iStim,1} = trials;
+%         end
+%         
+%         %Save data
+%         data(iN,iC).counts = counts;
+%         data(iN,iC).noise = noise(iN);
+%         data(iN,iC).fCoding = fCoding(iC);
+%         
+%     end
+%     
+% end
+% 
+% %% Randomly separate data into training set and test set
+% % Leave 1 out cross-validation
+% % Random permutation of trials
+% pTrials = randperm(nTrials);
+% 
+% % % Training indices
+% % ind_train = p(1:ceil(nTrials/2));
+% % % Test indices
+% % ind_test = p((ceil(nTrials/2)+1):end);
+% 
+% % Total number of training samples
+% n_e_train = nStimuli*(length(pTrials)-1);
+% % Total number of test samples
+% n_e_test = nStimuli;
+% 
+% %% Loop over different noise conditions and calculate performance for each
+% %Preallocate
+% SpatialModules = cell(nNoise,nCoding);
+% TestCoeff = cell(nNoise,nCoding);
+% TrainCoeff = cell(nNoise,nCoding);
+% kFeat = zeros(nNoise,nCoding);
+% ctr = zeros(nNoise,nCoding);
+% cte = zeros(nNoise,nCoding);
+% mean_fCorr = cell(nNoise,nCoding);
+% std_fCorr = cell(nNoise,nCoding); 
+% mean_tcCorr = cell(nNoise,nCoding);
+% std_tcCorr = cell(nNoise,nCoding);
 
-%Gaussian noise to add to each pattern as a % of the sigma_rate
-noise = 0:0.1:1;
-noise = [noise, [1.5, 2, 2.5, 3]];
-nNoise = length(noise);
-
-%Fraction of non-coding patterns into stimulus presentation
-fCoding = 0:0.06:0.84;
-nCoding = length(fCoding);
-nSessions = nCoding + nNoise;
-
-%Create matrix for synthetic data
-counts = cell(nStimuli,1);
-trials = cell(nTrials,1);
-
-%% Create Synthetic Data
-% What is a reasonable mean firing rate and its standard deviation?
-mean_rate = 10;
-sigma_rate = 5;
-
-%Parameters of log-normal distribution
-mu = log(mean_rate^2/sqrt(sigma_rate + mean_rate^2));
-sigma = sqrt(log(sigma_rate/mean_rate^2 + 1));
-
-%Draw 4 patterns of the firing rates of 100 neurons from the log-normal distribution
-for ii = 1:nPatterns
-    Patterns{ii,1} = lognrnd(mu,sigma,nNeurons,1);
-end
-
-CountMatrix = zeros(nNeurons,nBins);
-data = repmat(struct,nNoise,nCoding);
-for iN = 1:nNoise
-    for iC = 1:nCoding
-        fprintf('Creating simulated data for %u%% noise & %u%% non-coding patterns...\n',int16(noise(iN)*100),int16(fCoding(iC)*100));
-        for iStim = 1:nStimuli
-            %Which Pattern to select
-            iP = mod(iStim-1,4) + 1;
-            
-            %Base Firing Rate Pattern
-            RatePattern = Patterns{iP};
-            
-            %For each neuron and time step, add gaussian noise
-            for iTrial = 1:nTrials
-                %Additive Noise same across all patterns for each trial
-                CountMatrix = repmat(RatePattern,1,nBins) + noise(iN)*sigma_rate*randn(nNeurons,nBins);
-                
-                %Randomly insert "non-coding" patterns into the trial based off
-                %the fraction of coding patterns variable fCoding
-                nncBins = int8(fCoding(iC)*nBins);
-                p = randperm(nBins);
-                ind_nc = p(1:nncBins);
-                for iNC = 1:length(ind_nc)
-                    NonCodingPattern = lognrnd(mu,sigma,nNeurons,1) + noise(iN)*sigma_rate*randn(nNeurons,1);
-                    CountMatrix(:,ind_nc(iNC)) = NonCodingPattern;
-                end
-                
-                %Set negative values to 0
-                negPos = CountMatrix < 0;
-                CountMatrix(negPos) = 0;
-                
-                trials{iTrial,1} = CountMatrix;
-            end
-            counts{iStim,1} = trials;
-        end
-        
-        %Save data
-        data(iN,iC).counts = counts;
-        data(iN,iC).noise = noise(iN);
-        data(iN,iC).fCoding = fCoding(iC);
-        
-    end
-    
-end
-
-%% Randomly separate data into training set and test set
-% Leave 1 out cross-validation
-% Random permutation of trials
-pTrials = randperm(nTrials);
-%Start index at end of vector of trial indices to chose from
-TestIndex = length(pTrials);
-
-% % Training indices
-% ind_train = p(1:ceil(nTrials/2));
-% % Test indices
-% ind_test = p((ceil(nTrials/2)+1):end);
-
-% Total number of training samples
-n_e_train = nStimuli*(length(pTrials)-1);
-% Total number of test samples
-n_e_test = nStimuli;
-
-%% Loop over different noise conditions and calculate performance for each
-%Save factorized representation
-SpatialModules = cell(nNoise,nCoding);
-TestCoeff = cell(nNoise,nCoding);
-TrainCoeff = cell(nNoise,nCoding);
-kFeat = zeros(nNoise,nCoding);
-ctr = zeros(nNoise,nCoding);
-cte = zeros(nNoise,nCoding);
-mean_fCorr = cell(nNoise,nCoding);
-std_fCorr = cell(nNoise,nCoding); 
-mean_tcCorr = cell(nNoise,nCoding);
-std_tcCorr = cell(nNoise,nCoding);
-
-load('Dataset_20180207.mat');
-for iN = 1:nNoise
+load('example_data.mat');
+for iN = 5:nNoise
     fprintf('Concatenating data for %u%% noise level...\n',int16(noise(iN)*100));
     tStart = tic;
     for iC = 1:nCoding
@@ -136,6 +134,8 @@ for iN = 1:nNoise
         %% Leave 1 Out cross validation
         %Loop over each "leave 1 out" interation of the cross-validation
         %algorithm to obtain the best k based on the decoding performance
+        %Start index at end of vector of trial indices to chose from
+        TestIndex = length(pTrials);
         for iCross = 1:length(pTrials)
             offset_train = 0;
             offset_test = 0;
@@ -211,17 +211,39 @@ for iN = 1:nNoise
         rr_cte = zeros(nNMFruns,1);
         
         for indy = 1:nNMFruns
-            % Decompose training set
-            [W_train,H_train,err] = nmf(X_train,kFeat(iN,iC));
+            %Decompose training set
+%             [W_train,H_train,err] = nmf(X_train,kFeat(iN,iC));
+%             
+%             %Obtain test set activation coefficients for given modules
+%             [~,H_test,~] = nmf(X_test,kFeat(iN,iC),W_train);
             
-            % Obtain test set activation coefficients for given modules
-            [~,H_test,~] = nmf(X_test,kFeat(iN,iC),W_train);
+            %Decompose training set with VSMF function
+            feMethod = 'vsmf';
+            max_iter=10000;
+            err_tol=1e-12;
+            %NMF Options
+            Opt_VSMF = struct('iter',max_iter,'tof',err_tol,'dis',false,...
+                'alpha2',0.02,'alpha1',0.02,'lambda2',0.02,'lambda1',0.02,...
+                't1',true,'t2',true,'kernelizeAY',0,'feMethod',feMethod);
             
+            %Run the training set through the VSMF algorithm
+            [W_train,H_train,WtW_train] = vsmf(X_train,kFeat(iN,iC),Opt_VSMF);
+            
+            %Save Training results
+            TrainingOutput = cell(4,1);
+            TrainingOutput{1} = W_train;
+            TrainingOutput{2} = H_train;
+            TrainingOutput{3} = WtW_train;
+            TrainingOutput{4} = X_train;
+
+            %Run the test set through the VSMF algorithm
+            [W_test,H_test,WtW_test] = vsmf(X_test,kFeat(iN,iC),Opt_VSMF,TrainingOutput);
+                       
             %Calculate Squared Error
             sqerr_tr(indy) = norm((X_train - W_train*H_train).^2,'fro');
             sqerr_te(indy) = norm((X_test - W_train*H_test).^2,'fro');
             
-            % Process activation coefficients for classification
+            %Process activation coefficients for classification
             predictors_train = H_train';
             predictors_test = H_test';
             [cc_train,cc_test] = ldacc(predictors_train,groups_train,predictors_test,groups_test);
@@ -256,7 +278,8 @@ for iN = 1:nNoise
         s_fCorr = NaN(nNMFruns);
         m_tcCorr = NaN(nNMFruns);
         s_tcCorr = NaN(nNMFruns);
-        
+        histCorr = [];
+        histCorr1 = [];
         for ii = 1:nNMFruns
             aFeatures = rrFeatures{ii};
             aTestCoeff = rrTestCoeff{ii};
@@ -275,7 +298,8 @@ for iN = 1:nNoise
                     
                     tcCorr(iK) = corr2(aTestCoeff(iK,:),bTestCoeff(iCorr(iK),:));
                 end
-                
+                if ii ~= jj, histCorr1 = [histCorr1;fCorr(:)];end
+                if ii ~= jj, histCorr = [histCorr;featureCorr(:)];end
                 m_fCorr(ii,jj) = mean(fCorr);
                 s_fCorr(ii,jj) = std(fCorr);
                 
@@ -479,16 +503,25 @@ end
 
 
 
-          figure
-            ss = sprintf('Noise Level: %u%% -- Non-Coding Percentage: %u%% ',int16(noise(iN)*100),int16(fCoding(iC)*100));
-            suptitle(ss);
-    
-            imagesc(mean_fCorr)
-            colorbar
-            caxis([0.5,1])
-            title('Mean Correlation of Features between NMF runs');
-            xlabel('Run j'); ylabel('Run i');
+
+ss = sprintf('Noise Level: %u%% -- Non-Coding Percentage: %u%% ',int16(noise(iN)*100),int16(fCoding(iC-2)*100));
+
+figure
+imagesc(mean_fCorr{iN,iC-2})
+colorbar
+caxis([0.7,1])
+title('Mean Correlation of Features between NMF runs');
+suptitle(ss);
+xlabel('Run j'); ylabel('Run i');
             
+figure
+imagesc(mean_tcCorr{iN,iC-2})
+colorbar
+caxis([0.5,1])
+title('Mean Correlation of Activation Coefficients between NMF runs');
+suptitle(ss);
+xlabel('Run j'); ylabel('Run i');
+
             
             subplot(1,2,2)
             imagesc(std_fCorr)
@@ -496,3 +529,51 @@ end
             caxis([0,1])
             title('Std Correlation of Features between NMF runs');
             xlabel('Run j'); ylabel('Run i');
+            
+            
+            
+            figure
+            ss = sprintf('Noise Level: %u%% -- Non-Coding Percentage: %u%% ',int16(noise(iN)*100),int16(fCoding(iC)*100));
+            suptitle(ss);
+            
+            subplot(2,1,1)
+            imagesc(Caa);
+            colormap jet
+                        colorbar
+            caxis([-1,1])
+            title('Correlation of Features between NMF runs 1 & 1');
+            xlabel('Feature j'); ylabel('Feature i');
+            
+            subplot(2,1,2)
+            imagesc(Cab);
+            colormap jet
+                        colorbar
+            caxis([-1,1])
+            title('Correlation of Features between NMF runs 1 & 2');
+            xlabel('Feature j'); ylabel('Feature i');
+            
+            
+            histogram(histCorr,20)
+xlabel('Correlation Coefficient')
+title('Histogram of Correlation Coefficients of corresponding features of different runs')
+      
+
+figure
+ss = sprintf('Noise Level: %u%% -- Non-Coding Percentage: %u%%',int16(noise(iN)*100),int16(fCoding(iC)*100));
+suptitle(ss);
+subplot(1,2,1)
+imagesc(X_train)
+colorbar
+caxis([8,18])
+title('Firing Rate Data')
+xlabel('Time(ms)')
+ylabel('Neuron ID')
+
+subplot(1,2,2)
+Pattern_NMF = W_train*H_train;
+imagesc(Pattern_NMF)
+colorbar
+caxis([8,18])
+title('Factorized Representation')
+xlabel('Time(ms)')
+ylabel('Neuron ID')

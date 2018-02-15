@@ -66,7 +66,9 @@ n = size(X,1);
 err_best = inf;
 for j = 1:replicates
     if optimize_W
-        W = rand(n,k);
+        [idx,C] = kmeans(X',k);
+        W = C' + (-1 + 2*rand(n,k));
+%         W = rand(n,k);
     end
     H = pinv(W)*X;
     H(H<0) = 0;
