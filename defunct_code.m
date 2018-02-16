@@ -156,3 +156,61 @@ for ii = 1:nNMFruns
         std_tcCorr(ii,jj) = std(tcCorr);
     end
 end
+
+
+
+  m_fCorr = NaN(nNMFruns);
+        s_fCorr = NaN(nNMFruns);
+        m_tcCorr = NaN(nNMFruns);
+        s_tcCorr = NaN(nNMFruns);
+        for ii = 1:nNMFruns
+            aFeatures = rrFeatures{ii};
+            aTestCoeff = rrTestCoeff{ii};
+            for jj = 1:nNMFruns
+                bFeatures = rrFeatures{jj};
+                bTestCoeff = rrTestCoeff{jj};
+                
+                %Find the features between iFeatures & jFeatures that 
+                %correspond to the maximum correlation coefficient
+                for iK = 1:kFeat(iN,iC)
+                    featureCorr = [];
+                    for jK = 1:kFeat(iN,iC)
+                        featureCorr = [featureCorr, corr2(aFeatures(:,iK),bFeatures(:,jK))];
+                    end
+                    %Calculate the max correlation of each feature in aFeatures with
+                    %that of each feature in bFeatures & the corresponding index
+                    [fCorr(iK), iCorr(iK)] = max(featureCorr);
+                    bFeatures(:,iCorr(iK)) = 0;
+                    tcCorr(iK) = corr2(aTestCoeff(iK,:),bTestCoeff(iCorr(iK),:));
+                end
+ 
+%                 [fCorr(iK), iCorr(iK)] = max(featureCorr(iK,:));
+%                 for iM = 1:kFeat(iN,iC) 
+%                     %Calculate the max value and index for row iM
+%                     [mRow(iM), iRow(iM)] = max(featureCorr(iM,:));
+%                     
+%                     %Calculate the max value and index for col iM
+%                     [mCol(iM), iCol(iM)] = max(featureCorr(:,iM));
+%                     
+%                 end
+                    
+                
+
+                m_fCorr(ii,jj) = mean(fCorr);
+                s_fCorr(ii,jj) = std(fCorr);
+                m_tcCorr(ii,jj) = mean(tcCorr);
+                s_tcCorr(ii,jj) = std(tcCorr);
+            end
+        end
+        
+        for iRow = 1:kFeat(iN,iC)
+            [mm,ii] = max(featureCorr(iRow,:));
+            fprintf('Max for row %u: %.2f, Column Index: %u\n',iRow,mm,ii)
+            
+            for iCol = 1:kFeat(iN,iC)
+                [mm,jj] = max(featureCorr(:,iCol));
+                fprintf('\tMax for Col %u: %.2f, Column Index: %u\n',iCol,mm,jj)
+            end
+            
+        end
+        
