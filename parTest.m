@@ -1,4 +1,4 @@
-parpool(5)
+poolobj = parpool(15);
 
 parfor ii = 1:10
     
@@ -8,6 +8,7 @@ parfor ii = 1:10
     
     
 end
+delete(poolobj);
 d = clock;
-datastr = sprintf('./ResultsNClevel%u_%u%.2u%.2u%.2u%.2u.mat',int16(fCoding(iC)*100),d(1:5));
-save(datastr,'ii');
+datastr = sprintf('./ResultsNClevel%u_%u%.2u%.2u%.2u%.2u.mat',10,d(1:5));
+save(datastr,'d');

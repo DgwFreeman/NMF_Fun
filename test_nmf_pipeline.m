@@ -125,7 +125,7 @@ d = clock;
 datastr = sprintf('./ExampleData_%u%.2u%.2u%.2u%.2u.mat',d(1:5));
 save(datastr);
 
-parpool(15);
+poolobj = parpool(15);
 
 for iC = 1:nCoding
     fprintf('\t %u%% non-coding patterns introduced...\n',int16(fCoding(iC)*100));
@@ -334,4 +334,8 @@ for iC = 1:nCoding
     tElapsed = toc(tStart);
     fprintf('Time Elapsed for %u%% Non-Coding Level: %3.3f mins\n',int16(fCoding(iC)*100), tElapsed/60);
 end
-
+delete(poolobj);
+fprintf('Done with NMF analysis\n');
+d = clock;
+datastr = sprintf('./NMFResults_%u%.2u%.2u%.2u%.2u.mat',d(1:5));
+save(datastr,'mean_fCorr','std_fCorr','mean_tcCorr','std_tcCorr','SpatialModules','TestCoeff','TrainCoeff','dctr','dcte','std_dctr','std_dcte','data','kFeat');
