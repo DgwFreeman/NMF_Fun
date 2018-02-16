@@ -125,10 +125,12 @@ d = clock;
 datastr = sprintf('./ExampleData_%u%.2u%.2u%.2u%.2u.mat',d(1:5));
 save(datastr);
 
+parpool(15);
+
 for iC = 1:nCoding
     fprintf('\t %u%% non-coding patterns introduced...\n',int16(fCoding(iC)*100));
     tStart = tic;
-    for iN = 5:nNoise
+    parfor iN = 1:nNoise
         fprintf('Concatenating data for %u%% noise level...\n',int16(noise(iN)*100));
         % Build overall data matrices
         X_train = zeros(nNeurons,n_e_train*nBins);
