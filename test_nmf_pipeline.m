@@ -9,128 +9,130 @@
 % Author: D Wyrick
 % Date: 1/24/18
 %% Parameters
-clear all
-plot_figs = 0;
-nNeurons = 20;
-nTrials = 20;
-nBins = 100;
-nPatterns = 4;
-nStimuli = 4;
+% clear all
+% plot_figs = 0;
+% nNeurons = 20;
+% nTrials = 20;
+% nBins = 100;
+% nPatterns = 4;
+% nStimuli = 4;
+% 
+% %Gaussian noise to add to each pattern as a % of the sigma_rate
+% noise = 0:0.1:1;
+% noise = [noise, [1.5, 2, 2.5, 3]];
+% nNoise = length(noise);
+% 
+% %Fraction of non-coding patterns into stimulus presentation
+% fCoding = 0:0.06:0.84;
+% nCoding = length(fCoding);
+% nSessions = nCoding + nNoise;
+% 
+% %Create matrix for synthetic data
+% counts = cell(nStimuli,1);
+% trials = cell(nTrials,1);
+% 
+% %% Create Synthetic Data
+% % What is a reasonable mean firing rate and its standard deviation?
+% mean_rate = 10;
+% sigma_rate = 5;
+% 
+% %Parameters of log-normal distribution
+% mu = log(mean_rate^2/sqrt(sigma_rate + mean_rate^2));
+% sigma = sqrt(log(sigma_rate/mean_rate^2 + 1));
+% 
+% %Draw 4 patterns of the firing rates of 100 neurons from the log-normal distribution
+% for ii = 1:nPatterns
+%     Patterns{ii,1} = lognrnd(mu,sigma,nNeurons,1);
+% end
+% 
+% CountMatrix = zeros(nNeurons,nBins);
+% data = repmat(struct,nNoise,nCoding);
+% for iN = 1:nNoise
+%     for iC = 1:nCoding
+%         fprintf('Creating simulated data for %u%% noise & %u%% non-coding patterns...\n',int16(noise(iN)*100),int16(fCoding(iC)*100));
+%         for iStim = 1:nStimuli
+%             %Which Pattern to select
+%             iP = mod(iStim-1,4) + 1;
+%             
+%             %Base Firing Rate Pattern
+%             RatePattern = Patterns{iP};
+%             
+%             %For each neuron and time step, add gaussian noise
+%             for iTrial = 1:nTrials
+%                 %Additive Noise same across all patterns for each trial
+%                 CountMatrix = repmat(RatePattern,1,nBins) + noise(iN)*sigma_rate*randn(nNeurons,nBins);
+%                 
+%                 %Randomly insert "non-coding" patterns into the trial based off
+%                 %the fraction of coding patterns variable fCoding
+%                 nncBins = int8(fCoding(iC)*nBins);
+%                 p = randperm(nBins);
+%                 ind_nc = p(1:nncBins);
+%                 for iNC = 1:length(ind_nc)
+%                     NonCodingPattern = lognrnd(mu,sigma,nNeurons,1) + noise(iN)*sigma_rate*randn(nNeurons,1);
+%                     CountMatrix(:,ind_nc(iNC)) = NonCodingPattern;
+%                 end
+%                 
+%                 %Set negative values to 0
+%                 negPos = CountMatrix < 0;
+%                 CountMatrix(negPos) = 0;
+%                 
+%                 trials{iTrial,1} = CountMatrix;
+%             end
+%             counts{iStim,1} = trials;
+%         end
+%         
+%         %Save data
+%         data(iN,iC).counts = counts;
+%         data(iN,iC).noise = noise(iN);
+%         data(iN,iC).fCoding = fCoding(iC);
+%         
+%     end
+%     
+% end
+% 
+% %% Randomly separate data into training set and test set
+% % Leave 1 out cross-validation
+% % Random permutation of trials
+% pTrials = randperm(nTrials);
+% 
+% % % Training indices
+% % ind_train = p(1:ceil(nTrials/2));
+% % % Test indices
+% % ind_test = p((ceil(nTrials/2)+1):end);
+% 
+% % Total number of training samples
+% n_e_train = nStimuli*(length(pTrials)-1);
+% % Total number of test samples
+% n_e_test = nStimuli;
+% 
+% %% Loop over different noise conditions and calculate performance for each
+% %Preallocate for parallel processing
+% SpatialModules = cell(nNoise,nCoding);
+% TestCoeff = cell(nNoise,nCoding);
+% TrainCoeff = cell(nNoise,nCoding);
+% kFeat = zeros(nNoise,nCoding);
+% dctr = zeros(nNoise,nCoding);
+% dcte = zeros(nNoise,nCoding);
+% std_dctr = zeros(nNoise,nCoding);
+% std_dcte = zeros(nNoise,nCoding);
+% mean_fCorr = cell(nNoise,nCoding);
+% std_fCorr = cell(nNoise,nCoding); 
+% mean_tcCorr = cell(nNoise,nCoding);
+% std_tcCorr = cell(nNoise,nCoding);
+% 
+% %Save Data used for analysis
+% d = clock;
+% datastr = sprintf('./ExampleData_%u%.2u%.2u%.2u%.2u.mat',d(1:5));
+% save(datastr);
 
-%Gaussian noise to add to each pattern as a % of the sigma_rate
-noise = 0:0.1:1;
-noise = [noise, [1.5, 2, 2.5, 3]];
-nNoise = length(noise);
-
-%Fraction of non-coding patterns into stimulus presentation
-fCoding = 0:0.06:0.84;
-nCoding = length(fCoding);
-nSessions = nCoding + nNoise;
-
-%Create matrix for synthetic data
-counts = cell(nStimuli,1);
-trials = cell(nTrials,1);
-
-%% Create Synthetic Data
-% What is a reasonable mean firing rate and its standard deviation?
-mean_rate = 10;
-sigma_rate = 5;
-
-%Parameters of log-normal distribution
-mu = log(mean_rate^2/sqrt(sigma_rate + mean_rate^2));
-sigma = sqrt(log(sigma_rate/mean_rate^2 + 1));
-
-%Draw 4 patterns of the firing rates of 100 neurons from the log-normal distribution
-for ii = 1:nPatterns
-    Patterns{ii,1} = lognrnd(mu,sigma,nNeurons,1);
-end
-
-CountMatrix = zeros(nNeurons,nBins);
-data = repmat(struct,nNoise,nCoding);
-for iN = 1:nNoise
-    for iC = 1:nCoding
-        fprintf('Creating simulated data for %u%% noise & %u%% non-coding patterns...\n',int16(noise(iN)*100),int16(fCoding(iC)*100));
-        for iStim = 1:nStimuli
-            %Which Pattern to select
-            iP = mod(iStim-1,4) + 1;
-            
-            %Base Firing Rate Pattern
-            RatePattern = Patterns{iP};
-            
-            %For each neuron and time step, add gaussian noise
-            for iTrial = 1:nTrials
-                %Additive Noise same across all patterns for each trial
-                CountMatrix = repmat(RatePattern,1,nBins) + noise(iN)*sigma_rate*randn(nNeurons,nBins);
-                
-                %Randomly insert "non-coding" patterns into the trial based off
-                %the fraction of coding patterns variable fCoding
-                nncBins = int8(fCoding(iC)*nBins);
-                p = randperm(nBins);
-                ind_nc = p(1:nncBins);
-                for iNC = 1:length(ind_nc)
-                    NonCodingPattern = lognrnd(mu,sigma,nNeurons,1) + noise(iN)*sigma_rate*randn(nNeurons,1);
-                    CountMatrix(:,ind_nc(iNC)) = NonCodingPattern;
-                end
-                
-                %Set negative values to 0
-                negPos = CountMatrix < 0;
-                CountMatrix(negPos) = 0;
-                
-                trials{iTrial,1} = CountMatrix;
-            end
-            counts{iStim,1} = trials;
-        end
-        
-        %Save data
-        data(iN,iC).counts = counts;
-        data(iN,iC).noise = noise(iN);
-        data(iN,iC).fCoding = fCoding(iC);
-        
-    end
-    
-end
-
-%% Randomly separate data into training set and test set
-% Leave 1 out cross-validation
-% Random permutation of trials
-pTrials = randperm(nTrials);
-
-% % Training indices
-% ind_train = p(1:ceil(nTrials/2));
-% % Test indices
-% ind_test = p((ceil(nTrials/2)+1):end);
-
-% Total number of training samples
-n_e_train = nStimuli*(length(pTrials)-1);
-% Total number of test samples
-n_e_test = nStimuli;
-
-%% Loop over different noise conditions and calculate performance for each
-%Preallocate for parallel processing
-SpatialModules = cell(nNoise,nCoding);
-TestCoeff = cell(nNoise,nCoding);
-TrainCoeff = cell(nNoise,nCoding);
-kFeat = zeros(nNoise,nCoding);
-dctr = zeros(nNoise,nCoding);
-dcte = zeros(nNoise,nCoding);
-std_dctr = zeros(nNoise,nCoding);
-std_dcte = zeros(nNoise,nCoding);
-mean_fCorr = cell(nNoise,nCoding);
-std_fCorr = cell(nNoise,nCoding); 
-mean_tcCorr = cell(nNoise,nCoding);
-std_tcCorr = cell(nNoise,nCoding);
-
-%Save Data used for analysis
-d = clock;
-datastr = sprintf('./ExampleData_%u%.2u%.2u%.2u%.2u.mat',d(1:5));
-save(datastr);
-
+fprintf('Loading Data...\n');
+load('./ExampleData_201802161635.mat');
 poolobj = parpool(15);
 
 for iC = 1:nCoding
     fprintf('\t %u%% non-coding patterns introduced...\n',int16(fCoding(iC)*100));
     tStart = tic;
-    parfor iN = 1:nNoise
+    for iN = 1:nNoise
         fprintf('Concatenating data for %u%% noise level...\n',int16(noise(iN)*100));
         % Build overall data matrices
         X_train = zeros(nNeurons,n_e_train*nBins);

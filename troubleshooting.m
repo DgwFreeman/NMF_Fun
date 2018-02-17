@@ -220,18 +220,30 @@ xlabel('% Noise Added')
 title('With K-Means Initialization')
 grid on
 
-
-for ii = 1:15
+figure
+cc = hsv(nNoise);
+lgnd_str = cell(nNoise,1);
+for iC = 1:nCoding
+    for iN = 1:nNoise
    
-    tmp = mean_fCorr{ii,1};
+    tmp = mean_fCorr{iN,iC};
     tmp = triu(tmp,1);
     m_fCorr = tmp(tmp ~= 0);
     
     %Calculate the mean of the mean correlation between features of
     %different runs
-    mm_fCorr(ii,1) = mean(m_fCorr);
-    std_fCorr(ii,1) = std(m_fCorr); 
+    mm_fCorr(iN,1) = mean(m_fCorr);
+    ss_fCorr(iN,1) = std(m_fCorr); 
     
+    end
+    
+    plot(noise*100,mm_fCorr,'-.','MarkerSize',8,...
+    'MarkerEdgeColor',cc(iC,:),'MarkerFaceColor',cc(iC,:)),hold on
+%     errorbar(noise*100,mm_fCorr,ss_fCorr,'-s','MarkerSize',8,...
+%     'MarkerEdgeColor',cc(iC,:),'MarkerFaceColor',cc(iC,:)),hold on
+    ss = sprintf('Non-Coding Percentage: %u%%',int16(fCoding(iC)*100));
+    lgnd_str{iC,1} = {ss};
+
 end
 figure
 errorbar(noise*100,mm_fCorr,std_fCorr,'-s','MarkerSize',8,...
@@ -239,7 +251,7 @@ errorbar(noise*100,mm_fCorr,std_fCorr,'-s','MarkerSize',8,...
 
 xlabel('% Noise Added')
 ylabel('Mean Correlation')
-title('Mean Correlation betwen features of different runs')
+title('Mean of the Mean Correlation betwen features of different runs')
 
 
         %% Optional Plotting
