@@ -126,13 +126,13 @@
 % save(datastr);
 
 fprintf('Loading Data...\n');
-load('./ExampleData_201802161635.mat');
-poolobj = parpool(15);
+load('.\ExampleData_201802161635.mat');
+poolobj = parpool(5);
 
 for iC = 1:nCoding
     fprintf('\t %u%% non-coding patterns introduced...\n',int16(fCoding(iC)*100));
     tStart = tic;
-    for iN = 1:nNoise
+    parfor iN = 1:nNoise
         fprintf('Concatenating data for %u%% noise level...\n',int16(noise(iN)*100));
         % Build overall data matrices
         X_train = zeros(nNeurons,n_e_train*nBins);
@@ -147,6 +147,7 @@ for iC = 1:nCoding
         TestIndex = length(pTrials);
         DCperf = zeros(length(pTrials),1);
         K_cv = zeros(length(pTrials),1);
+        minSQE = zeros(length(pTrials),1);
         for iCross = 1:length(pTrials)
             offset_train = 0;
             offset_test = 0;
@@ -172,17 +173,18 @@ for iC = 1:nCoding
             end
             %Find Optimal number of spatial modules for this particular
             %training/test set combo
-            [DCperf(iCross,1), K_cv(iCross,1)] = select_k(X_train,groups_train,X_test,groups_test);
+            [DCperf(iCross),minSQE(iCross), K_cv(iCross)] = select_k(X_train,groups_train,X_test,groups_test);
             
             %Update which trial is used for testing
             TestIndex = TestIndex - 1;
         end
         
         %Out of all of the "Leave 1 out" iterations, which one resulted in
-        %the best decoding performance?
-        [DCmax,iK] = max(DCperf(:));
-        kFeat(iN,iC) = K_cv(iK);
-        TestIndex = iK;
+        %the smallest reconstruction error out of the median values of K
+        pos = find(K_cv == median(K_cv));
+        [SQE,iK] = min(minSQE(pos));
+        kFeat(iN,iC) = K_cv(pos(iK));
+        TestIndex = pos(iK);
         
         %Re-create the training and test matrices that resulted in the best
         %decoding performance
@@ -336,6 +338,8 @@ for iC = 1:nCoding
     tElapsed = toc(tStart);
     fprintf('Time Elapsed for %u%% Non-Coding Level: %3.3f mins\n',int16(fCoding(iC)*100), tElapsed/60);
 end
+
+%% Clean up workspace & Save Results
 delete(poolobj);
 fprintf('Done with NMF analysis\n');
 d = clock;

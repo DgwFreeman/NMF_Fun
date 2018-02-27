@@ -2,6 +2,217 @@
 % Compare noisy data with pristine data & factorized representation for
 % first trial of the training set
 
+clear all
+cd C:\Users\Freeman\Documents\GitHub\NMF_Fun
+NoInit = load('./Results/NoKmeansInit/NMFResults_201802161952.mat');
+KmInit = load('./Results/KmeansInit/NMFResults_201802171538.mat');
+load('./Results/KmeansInit/ExampleData_201802161635.mat','data','nPatterns',...
+    'nCoding','nNoise','nStimuli','nTrials','nSessions','n_e_test',...
+    'n_e_train','noise','fCoding','sigma_rate','Patterns');
+
+
+%% Compare decoding performance for Kmeans and random seed Initializations 
+figure
+subplot(1,2,1)
+imagesc(KmInit.dcte)
+title('Decoding Performance for 4 Patterns using Kmeans Initialization');
+ylabel('% Additive Noise')
+xlabel('% Non-Coding Patterns')
+xticks(1:1:15)
+yticks(1:1:15)
+xticklabels(fCoding*100);
+yticklabels(noise*100);
+colorbar
+caxis([1,100])
+colormap jet
+
+subplot(1,2,2)
+imagesc(NoInit.dcte)
+title('Decoding Performance for 4 Patterns using Random Initialization');
+ylabel('% Additive Noise')
+xlabel('% Non-Coding Patterns')
+xticks(1:1:15)
+yticks(1:1:15)
+xticklabels(fCoding*100);
+yticklabels(noise*100);
+colorbar
+caxis([1,100])
+colormap jet
+
+%Just plot the difference
+figure
+imagesc(KmInit.dcte-NoInit.dcte)
+title('Difference in Decoding Performance using Kmeans vs Random Seed Initializations');
+ylabel('% Additive Noise')
+xlabel('% Non-Coding Patterns')
+xticks(1:1:15)
+yticks(1:1:15)
+xticklabels(fCoding*100);
+yticklabels(noise*100);
+colorbar
+caxis([-5,5])
+colormap jet
+
+%% Compare the correlation between features of different runs
+for iN = 1:nNoise
+    for iC = 1:nCoding
+        tmp = KmInit.mean_fCorr{iN,iC};
+        tmp = triu(tmp,1);
+        Km_fCorr = tmp(tmp ~= 0);
+        
+        %Calculate the mean of the mean correlation between features of
+        %different runs
+        Km_m_fCorr(iN,iC) = mean(Km_fCorr);
+        Km_s_fCorr(iN,iC) = std(Km_fCorr);
+        
+    end
+end
+
+for iN = 1:nNoise
+    for iC = 1:nCoding
+        tmp = NoInit.mean_fCorr{iN,iC};
+        tmp = triu(tmp,1);
+        m_fCorr = tmp(tmp ~= 0);
+        
+        %Calculate the mean of the mean correlation between features of
+        %different runs
+        No_m_fCorr(iN,iC) = mean(m_fCorr);
+        No_s_fCorr(iN,iC) = std(m_fCorr);
+        
+    end
+end
+
+figure
+subplot(2,2,1)
+imagesc(Km_m_fCorr)
+title('Mean Correlation Coefficient using Kmeans Initialization');
+ylabel('% Additive Noise')
+xticks(1:1:15)
+yticks(1:1:15)
+xticklabels(fCoding*100);
+yticklabels(noise*100);
+colorbar
+caxis([0,1])
+colormap jet
+
+subplot(2,2,2)
+imagesc(No_m_fCorr)
+title('Mean Correlation Coefficient using Random Initialization');
+xticks(1:1:15)
+yticks(1:1:15)
+xticklabels(fCoding*100);
+yticklabels(noise*100);
+colorbar
+caxis([0,1])
+colormap jet
+
+subplot(2,2,3)
+imagesc(Km_s_fCorr)
+title('Std Correlation Coefficient using Kmeans Initialization');
+ylabel('% Additive Noise')
+xlabel('% Non-Coding Patterns')
+xticks(1:1:15)
+yticks(1:1:15)
+xticklabels(fCoding*100);
+yticklabels(noise*100);
+colorbar
+caxis([0,1])
+colormap jet
+
+subplot(2,2,4)
+imagesc(No_s_fCorr)
+title('Std Correlation Coefficient using Random Initialization');
+xlabel('% Non-Coding Patterns')
+xticks(1:1:15)
+yticks(1:1:15)
+xticklabels(fCoding*100);
+yticklabels(noise*100);
+colorbar
+caxis([0,1])
+colormap jet
+suptitle('Mean Correlation Coefficient between features of different runs');
+
+%% Compare the correlation between coefficients of different runs
+for iN = 1:nNoise
+    for iC = 1:nCoding
+        tmp = KmInit.mean_tcCorr{iN,iC};
+        tmp = triu(tmp,1);
+        Km_fCorr = tmp(tmp ~= 0);
+        
+        %Calculate the mean of the mean correlation between features of
+        %different runs
+        Km_m_fCorr(iN,iC) = mean(Km_fCorr);
+        Km_s_fCorr(iN,iC) = std(Km_fCorr);
+        
+    end
+end
+
+for iN = 1:nNoise
+    for iC = 1:nCoding
+        tmp = NoInit.mean_tcCorr{iN,iC};
+        tmp = triu(tmp,1);
+        m_fCorr = tmp(tmp ~= 0);
+        
+        %Calculate the mean of the mean correlation between features of
+        %different runs
+        No_m_fCorr(iN,iC) = mean(m_fCorr);
+        No_s_fCorr(iN,iC) = std(m_fCorr);
+        
+    end
+end
+
+figure
+subplot(2,2,1)
+imagesc(Km_m_fCorr)
+title('Mean Correlation Coefficient using Kmeans Initialization');
+ylabel('% Additive Noise')
+xticks(1:1:15)
+yticks(1:1:15)
+xticklabels(fCoding*100);
+yticklabels(noise*100);
+colorbar
+caxis([0,1])
+colormap jet
+
+subplot(2,2,2)
+imagesc(No_m_fCorr)
+title('Mean Correlation Coefficient using Random Initialization');
+xticks(1:1:15)
+yticks(1:1:15)
+xticklabels(fCoding*100);
+yticklabels(noise*100);
+colorbar
+caxis([0,1])
+colormap jet
+
+subplot(2,2,3)
+imagesc(Km_s_fCorr)
+title('Std Correlation Coefficient using Kmeans Initialization');
+ylabel('% Additive Noise')
+xlabel('% Non-Coding Patterns')
+xticks(1:1:15)
+yticks(1:1:15)
+xticklabels(fCoding*100);
+yticklabels(noise*100);
+colorbar
+caxis([0,1])
+colormap jet
+
+subplot(2,2,4)
+imagesc(No_s_fCorr)
+title('Std Correlation Coefficient using Random Initialization');
+xlabel('% Non-Coding Patterns')
+xticks(1:1:15)
+yticks(1:1:15)
+xticklabels(fCoding*100);
+yticklabels(noise*100);
+colorbar
+caxis([0,1])
+colormap jet
+suptitle('Mean Correlation Coefficient between Activation Coefficients of different runs');
+
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 cc = hsv(nNoise);
 for iN = 1:nNoise
     fprintf('Plotting %u%% noise level...\n',int16(noise(iN)*100));
@@ -103,6 +314,7 @@ end
 
 testBasis = SpatialModules{1, 4};
 for i = 1:4
+    testPatterns(:,i) = Patterns{i, 1};
     tt = norm(testPatterns(:,i));
     testPatterns(:,i) = testPatterns(:,i)/tt;
     
@@ -300,3 +512,49 @@ title('Mean of the Mean Correlation betwen features of different runs')
                 offset = offset + nBins*nTrials/2;
             end
         end
+        
+        
+        
+        
+            dtl = NaN(iK - 2,1);
+    if iK > 2
+        SQE_Slope = (sqerr_te(iK) - sqerr_te(1))/(iK - 1);
+        b1 = sqerr_te(1) - SQE_Slope;
+        xK =1:iK;
+        plot(xK,sqerr_te,'-ok'),hold on
+        plot(xK,SQE_Slope*xK + b1,'-r'),hold on
+        
+        for ii = 2:iK-1
+            b2 = sqerr_te(ii) + SQE_Slope*ii;
+            
+            %Point of intersection
+            xx = (b2 - b1)/(2*SQE_Slope);
+            yy = SQE_Slope*xx + b1;
+            
+            plot([ii,xx],[sqerr_te(ii),yy],'b'),hold on
+            dtl(ii,1) = sqrt((yy - sqerr_te(ii))^2 + (xx - ii)^2);
+
+        end
+        [currMax, currMaxIndex] = max(dtl);
+        dist_to_line{iK} = dtl;
+    end
+    
+        %Determine if we've found the Squared Error 'Elbow'
+    if iK > 2
+        SQE_Slope = (sqerr_te(iK) - sqerr_te(iK-2))/2;
+        b1 = sqerr_te(iK) - SQE_Slope*iK;
+        xK =iK-2:iK;
+        plot(1:iK,sqerr_te,'-ok'),hold on
+        plot(xK,SQE_Slope*xK + b1,'-r'),hold on
+        
+        ii = iK - 1;
+        b2 = sqerr_te(ii) + SQE_Slope*ii;
+        
+        %Point of intersection
+        xx = (b2 - b1)/(2*SQE_Slope);
+        yy = SQE_Slope*xx + b1;
+        
+        plot([ii,xx],[sqerr_te(ii),yy],'b'),hold on
+        dtl(iK,1) = sqrt((yy - sqerr_te(ii))^2 + (xx - ii)^2);
+
+    end
