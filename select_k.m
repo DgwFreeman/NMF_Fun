@@ -47,8 +47,8 @@ for iK = 1:length(k_range)
     cte(iK) = cc_test;
     
     %Calculate Squared Error
-    sqerr_tr(iK) = norm((X_train - W_train*H_train),'fro')^2;
-    sqerr_te(iK) = norm((X_test - W_train*H_test),'fro')^2;
+    sqerr_tr(iK) = norm(X_train - W_train*H_train,'fro')^2/norm(X_train,'fro')^2;
+    sqerr_te(iK) = norm(X_test - W_train*H_test,'fro')^2/norm(X_test,'fro')^2;
     
     %Determine if we've found the Squared Error 'Elbow'
     if iK > 2
@@ -69,18 +69,13 @@ for iK = 1:length(k_range)
 %         plot([ii,xx],[sqerr_te(ii),yy],'--b'),hold on
         dtl(ii,1) = sqrt((yy - sqerr_te(ii))^2 + (xx - ii)^2);
 
-%         dist_to_line{iK} = dtl;
     end
     % Determine if we've found the 'Elbow' of the reconstruction error yet
     [currMax, currMaxIndex] = max(dtl);
     if prevMaxIndex == currMaxIndex, indy = indy + 1; end
     
     % Break the loop if we've found the elbow
-    if indy > 2
-%         tElapsed = toc(tStart);
-%         fprintf('Optimal # of Modules: %u, Time Elapsed: %3.3f\n', prevMaxIndex,tElapsed);
-        break;
-    end
+    if indy > 2, break; end
     
     prevMax = currMax;
     prevMaxIndex = currMaxIndex;
