@@ -558,3 +558,26 @@ title('Mean of the Mean Correlation betwen features of different runs')
         dtl(iK,1) = sqrt((yy - sqerr_te(ii))^2 + (xx - ii)^2);
 
     end
+    
+    
+                %% Decompose training set with VSMF function
+%             feMethod = 'vsmf';
+%             max_iter=10000;
+%             err_tol=1e-12;
+%             %NMF Options
+%             Opt_VSMF = struct('iter',max_iter,'tof',err_tol,'dis',false,...
+%                 'alpha2',0.02,'alpha1',0.02,'lambda2',0.02,'lambda1',0.02,...
+%                 't1',true,'t2',true,'kernelizeAY',0,'feMethod',feMethod);
+%             
+%             %Run the training set through the VSMF algorithm
+%             [W_train,H_train,WtW_train] = vsmf(X_train,kFeat(iN,iC),Opt_VSMF);
+%             
+%             %Save Training results
+%             TrainingOutput = cell(4,1);
+%             TrainingOutput{1} = W_train;
+%             TrainingOutput{2} = H_train;
+%             TrainingOutput{3} = WtW_train;
+%             TrainingOutput{4} = X_train;
+% 
+%             %Run the test set through the VSMF algorithm
+%             [W_test,H_test,WtW_test] = vsmf(X_test,kFeat(iN,iC),Opt_VSMF,TrainingOutput);

@@ -29,7 +29,7 @@ tStart = tic;
 prevMax = 0;
 prevMaxIndex = 0;
 indy = 0;
-% figure
+
 dtl = zeros(length(k_range),1);
 for iK = 1:length(k_range)
     n_m = k_range(iK);
@@ -50,7 +50,8 @@ for iK = 1:length(k_range)
     sqerr_tr(iK) = norm(X_train - W_train*H_train,'fro')^2/norm(X_train,'fro')^2;
     sqerr_te(iK) = norm(X_test - W_train*H_test,'fro')^2/norm(X_test,'fro')^2;
     
-    %Determine if we've found the Squared Error 'Elbow'
+    %% Determine if we've found the Squared Error 'kink', indicating the
+    %point of diminishing returns for adding more components
     if iK > 2
         SQE_Slope = (sqerr_te(iK) - sqerr_te(1))/(iK - 1);
         b1 = sqerr_te(iK) - SQE_Slope*iK;

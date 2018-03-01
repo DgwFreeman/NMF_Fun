@@ -9,24 +9,24 @@
 % Author: D Wyrick
 % Date: 1/24/18
 %% Parameters
-% clear all
-% plot_figs = 0;
-% nNeurons = 20;
-% nTrials = 20;
-% nBins = 100;
-% nPatterns = 4;
-% nStimuli = 4;
-% 
-% %Gaussian noise to add to each pattern as a % of the sigma_rate
-% noise = 0:0.1:1;
-% noise = [noise, [1.5, 2, 2.5, 3]];
-% nNoise = length(noise);
-% 
-% %Fraction of non-coding patterns into stimulus presentation
-% fCoding = 0:0.06:0.84;
-% nCoding = length(fCoding);
-% nSessions = nCoding + nNoise;
-% 
+clear all
+plot_figs = 0;
+nNeurons = 20;
+nTrials = 20;
+nBins = 100;
+nPatterns = 4;
+nStimuli = 4;
+
+%Gaussian noise to add to each pattern as a % of the sigma_rate
+noise = 0:0.1:1;
+noise = [noise, [1.5, 2, 2.5, 3]];
+nNoise = length(noise);
+
+%Fraction of non-coding patterns into stimulus presentation
+fCoding = 0:0.06:0.84;
+nCoding = length(fCoding);
+nSessions = nCoding + nNoise;
+
 % %Create matrix for synthetic data
 % counts = cell(nStimuli,1);
 % trials = cell(nTrials,1);
@@ -89,52 +89,64 @@
 %     end
 %     
 % end
-% 
-% %% Randomly separate data into training set and test set
-% % Leave 1 out cross-validation
+
+%% Randomly separate data into training set and test set
+%For Unsupervised Case, separate data 50/50
+%Create nXVAL different combinations of the data split
+nXVAL = 10;
+ind_train = zeros(nXVAL,nTrials/2);
+ind_test = zeros(nXVAL,nTrials/2);
+for iXV = 1:nXVAL
+    p = randperm(nTrials);
+    %Training indices
+    ind_train(iXV,:) = p(1:ceil(nTrials/2));
+    %Test indices
+    ind_test(iXV,:) = p((ceil(nTrials/2)+1):end);
+end
+% Total number of training samples
+n_e_train = nStimuli*size(ind_train,2);
+% Total number of test samples
+n_e_test = nStimuli*size(ind_train,2);
+
+%For Supervised Case, perform the leave-1-out cross-validation
 % % Random permutation of trials
 % pTrials = randperm(nTrials);
-% 
-% % % Training indices
-% % ind_train = p(1:ceil(nTrials/2));
-% % % Test indices
-% % ind_test = p((ceil(nTrials/2)+1):end);
-% 
+%
 % % Total number of training samples
 % n_e_train = nStimuli*(length(pTrials)-1);
 % % Total number of test samples
 % n_e_test = nStimuli;
-% 
-% %% Loop over different noise conditions and calculate performance for each
-% %Preallocate for parallel processing
-% SpatialModules = cell(nNoise,nCoding);
-% TestCoeff = cell(nNoise,nCoding);
-% TrainCoeff = cell(nNoise,nCoding);
-% kFeat = zeros(nNoise,nCoding);
-% dctr = zeros(nNoise,nCoding);
-% dcte = zeros(nNoise,nCoding);
-% std_dctr = zeros(nNoise,nCoding);
-% std_dcte = zeros(nNoise,nCoding);
-% mean_fCorr = cell(nNoise,nCoding);
-% std_fCorr = cell(nNoise,nCoding); 
-% mean_tcCorr = cell(nNoise,nCoding);
-% std_tcCorr = cell(nNoise,nCoding);
-% 
-% %Save Data used for analysis
+
+%% Loop over different noise conditions and calculate performance for each
+%Preallocate for parallel processing
+SpatialModules = cell(nNoise,nCoding);
+TestCoeff = cell(nNoise,nCoding);
+TrainCoeff = cell(nNoise,nCoding);
+kFeat = zeros(nNoise,nCoding);
+dctr = zeros(nNoise,nCoding);
+dcte = zeros(nNoise,nCoding);
+std_dctr = zeros(nNoise,nCoding);
+std_dcte = zeros(nNoise,nCoding);
+mean_fCorr = cell(nNoise,nCoding);
+std_fCorr = cell(nNoise,nCoding); 
+mean_tcCorr = cell(nNoise,nCoding);
+std_tcCorr = cell(nNoise,nCoding);
+
+%Save Data used for analysis
 % d = clock;
 % datastr = sprintf('./ExampleData_%u%.2u%.2u%.2u%.2u.mat',d(1:5));
 % save(datastr);
 
 fprintf('Loading Data...\n');
-load('.\ExampleData_201802161635.mat');
-poolobj = parpool(5);
+load('C:\Users\Freeman\Documents\GitHub\NMF_Fun\Results\KmeansInit\ExampleData_201802161635.mat','data');
+% poolobj = parpool(5);
 
 for iC = 1:nCoding
     fprintf('\t %u%% non-coding patterns introduced...\n',int16(fCoding(iC)*100));
     tStart = tic;
-    parfor iN = 1:nNoise
+    for iN = 3:nNoise
         fprintf('Concatenating data for %u%% noise level...\n',int16(noise(iN)*100));
-        % Build overall data matrices
+        % Build overall training and test matrices
         X_train = zeros(nNeurons,n_e_train*nBins);
         X_test = zeros(nNeurons,n_e_test*nBins);
         groups_train = zeros(n_e_train*nBins,1);
@@ -144,39 +156,58 @@ for iC = 1:nCoding
         %Loop over each "leave 1 out" interation of the cross-validation
         %algorithm to obtain the best k based on the decoding performance
         %Start index at end of vector of trial indices to chose from
-        TestIndex = length(pTrials);
-        DCperf = zeros(length(pTrials),1);
-        K_cv = zeros(length(pTrials),1);
-        minSQE = zeros(length(pTrials),1);
-        for iCross = 1:length(pTrials)
+%         TestIndex = length(pTrials);
+%         DCperf = zeros(length(pTrials),1);
+%         K_cv = zeros(length(pTrials),1);
+%         minSQE = zeros(length(pTrials),1);
+        
+        %% Random sub-sampling validation
+        DCperf = zeros(nXVAL,1);
+        K_cv = zeros(nXVAL,1);
+        minSQE = zeros(nXVAL,1);
+        for iXV = 1:nXVAL
             offset_train = 0;
             offset_test = 0;
             
             %Loop over the different stiumuli & trials to create matrices
             for iStim = 1:nStimuli
-                for iTrial = 1:length(pTrials)
-                    if iTrial ~= TestIndex
-                        X_train(:,offset_train+(1:nBins)) = data(iN,iC).counts{iStim}{pTrials(iTrial)};
-                        %Training Class labels
-                        groups_train(offset_train+(1:nBins),1) = iStim;
-                        %Update offset for training matrix
-                        offset_train = offset_train + nBins;
-                    end
+                %Supervised xval 
+%                 for iTrial = 1:nTrials
+%                     if iTrial ~= TestIndex
+%                         X_train(:,offset_train+(1:nBins)) = data(iN,iC).counts{iStim}{pTrials(iTrial)};
+%                         %Training Class labels
+%                         groups_train(offset_train+(1:nBins),1) = iStim;
+%                         %Update offset for training matrix
+%                         offset_train = offset_train + nBins;
+%                     end
+%                 end
+%                 
+%                 X_test(:,offset_test+(1:nBins)) = data(iN,iC).counts{iStim}{pTrials(TestIndex)};
+%                 %Test class labels
+%                 groups_test(offset_test+(1:nBins),1) = iStim;
+%                 
+%                 %Update offset for test matrix
+%                 offset_test = offset_test + nBins;
+%                 %Update which trial is used for testing
+%                 TestIndex = TestIndex - 1;
+                
+                %Unsupervised cross-validation, separate the training/test
+                for iTrial = 1:length(ind_train)
+                    X_train(:,offset_train+(1:nBins)) = data(iN,iC).counts{iStim}{ind_train(iXV,iTrial)};
+                    groups_train(offset_train+(1:nBins),1) = iStim;
+                    offset_train = offset_train + nBins;
                 end
-                
-                X_test(:,offset_test+(1:nBins)) = data(iN,iC).counts{iStim}{pTrials(TestIndex)};
-                %Test class labels
-                groups_test(offset_test+(1:nBins),1) = iStim;
-                
-                %Update offset for test matrix
-                offset_test = offset_test + nBins;
+                for iTrial = 1:length(ind_test)
+                    X_test(:,offset_test+(1:nBins)) = data(iN,iC).counts{iStim}{ind_test(iXV,iTrial)};
+                    groups_test(offset_test+(1:nBins),1) = iStim;
+                    offset_test = offset_test + nBins;
+                end
             end
-            %Find Optimal number of spatial modules for this particular
-            %training/test set combo
-            [DCperf(iCross),minSQE(iCross), K_cv(iCross)] = select_k(X_train,groups_train,X_test,groups_test);
             
-            %Update which trial is used for testing
-            TestIndex = TestIndex - 1;
+            %% Select the Optimal Number of components, k, using the 
+            % unsupervised SQE formulation
+            [DCperf(iXV),minSQE(iXV), K_cv(iXV)] = select_k(X_train,groups_train,X_test,groups_test);
+            
         end
         
         %Out of all of the "Leave 1 out" iterations, which one resulted in
@@ -186,89 +217,50 @@ for iC = 1:nCoding
         kFeat(iN,iC) = K_cv(pos(iK));
         TestIndex = pos(iK);
         
-        %Re-create the training and test matrices that resulted in the best
-        %decoding performance
-        offset_train = 0;
-        offset_test = 0;
+        %% Now that we've determined the number of components to extract
+        %create the whole trial-concatenated matrix to input into the NMF
+        X = zeros(nNeurons,nTrials*nBins);
+        groups_X = zeros(nTrials*nBins,1);
+        offset = 0;
         for iStim = 1:nStimuli
-            for iTrial = 1:length(pTrials)
-                if iTrial ~= TestIndex
-                    X_train(:,offset_train+(1:nBins)) = data(iN,iC).counts{iStim}{pTrials(iTrial)};
-                    %Training Class labels
-                    groups_train(offset_train+(1:nBins),1) = iStim;
-                    %Update offset for training matrix
-                    offset_train = offset_train + nBins;
-                end
+            for iTrial = 1:nTrials
+                %Trial-Concatenated Matrix
+                X(:,offset+(1:nBins)) = data(iN,iC).counts{iStim}{iTrial};
+                %Class labels
+                groups_X(offset+(1:nBins),1) = iStim;
+                %Update offset for data matrix
+                offset = offset + nBins;
             end
-            
-            X_test(:,offset_test+(1:nBins)) = data(iN,iC).counts{iStim}{pTrials(TestIndex)};
-            %Test class labels
-            groups_test(offset_test+(1:nBins),1) = iStim;
-            
-            %Update offset for test matrix
-            offset_test = offset_test + nBins;
         end
         
         %% Decompose the data now using the k value found in the cross-validation algorithm
         % Run NMF multiple times to average decoding performance
         nNMFruns = 10;
         %Calculate the squared error of each run 
-        sqerr_tr = zeros(nNMFruns,1);
-        sqerr_te = zeros(nNMFruns,1);
+        SQE = zeros(nNMFruns,1);
         %Compare Features and Coefficients between runs of the nmf
         rrFeatures = cell(nNMFruns,1);
-        rrTestCoeff = cell(nNMFruns,1);
-        rrTrainCoeff = cell(nNMFruns,1);
+        rrActCoeff = cell(nNMFruns,1);
         %Compare the decoding performance between each run
-        rr_ctr = zeros(nNMFruns,1);
-        rr_cte = zeros(nNMFruns,1);
-        
+        rrDC = zeros(nNMFruns,1);
+
         for indy = 1:nNMFruns
-            %Decompose training set
-            [W_train,H_train,err] = nmf(X_train,kFeat(iN,iC));
-            
-            %Obtain test set activation coefficients for given modules
-            [~,H_test,~] = nmf(X_test,kFeat(iN,iC),W_train);
-            
-            %Decompose training set with VSMF function
-%             feMethod = 'vsmf';
-%             max_iter=10000;
-%             err_tol=1e-12;
-%             %NMF Options
-%             Opt_VSMF = struct('iter',max_iter,'tof',err_tol,'dis',false,...
-%                 'alpha2',0.02,'alpha1',0.02,'lambda2',0.02,'lambda1',0.02,...
-%                 't1',true,'t2',true,'kernelizeAY',0,'feMethod',feMethod);
-%             
-%             %Run the training set through the VSMF algorithm
-%             [W_train,H_train,WtW_train] = vsmf(X_train,kFeat(iN,iC),Opt_VSMF);
-%             
-%             %Save Training results
-%             TrainingOutput = cell(4,1);
-%             TrainingOutput{1} = W_train;
-%             TrainingOutput{2} = H_train;
-%             TrainingOutput{3} = WtW_train;
-%             TrainingOutput{4} = X_train;
-% 
-%             %Run the test set through the VSMF algorithm
-%             [W_test,H_test,WtW_test] = vsmf(X_test,kFeat(iN,iC),Opt_VSMF,TrainingOutput);
-                       
+            %Decompose the trial-concatenated data
+            [W,H,err] = nmf(X,kFeat(iN,iC));      
+      
             %Calculate Squared Error
-            sqerr_tr(indy) = norm((X_train - W_train*H_train).^2,'fro');
-            sqerr_te(indy) = norm((X_test - W_train*H_test).^2,'fro');
+            SQE(indy) = norm(X-W*H,'fro')^2/norm(X,'fro')^2;
             
             %Process activation coefficients for classification
-            predictors_train = H_train';
-            predictors_test = H_test';
-            [cc_train,cc_test] = ldacc(predictors_train,groups_train,predictors_test,groups_test);
+            predictors = H';
+            [cc,~] = ldacc(predictors,groups_X);
             
             %Save factorized representation of data
-            rrFeatures{indy,1} = W_train;
-            rrTestCoeff{indy,1} = H_test;
-            rrTrainCoeff{indy,1} = H_train;
-            
+            rrFeatures{indy,1} = W;
+            rrActCoeff{indy,1} = H;
+
             %Save Decoding Performance
-            rr_ctr(indy,1) = cc_train;
-            rr_cte(indy,1) = cc_test;
+            rrDC(indy,1) = cc_train;
         end
         
         %Save factorized representation of data with the smallest SE
