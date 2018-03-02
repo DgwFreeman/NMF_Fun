@@ -129,6 +129,9 @@ std_fCorr = cell(nNoise,nCoding);
 mean_tcCorr = cell(nNoise,nCoding);
 std_tcCorr = cell(nNoise,nCoding);
 
+rrNMF_W = cell(nCoding,1);
+rrNMF_H = cell(nCoding,1);
+
 %Save Data used for analysis
 % d = clock;
 % datastr = sprintf('./ExampleData_%u%.2u%.2u%.2u%.2u.mat',d(1:5));
@@ -136,12 +139,12 @@ std_tcCorr = cell(nNoise,nCoding);
 
 fprintf('Loading Data...\n');
 load('C:\Users\Freeman\Documents\GitHub\NMF_Fun\Results\KmeansInit\ExampleData_201802161635.mat','data');
-% poolobj = parpool(5);
+poolobj = parpool(15);
 
 for iC = 1:nCoding
     fprintf('\t %u%% non-coding patterns introduced...\n',int16(fCoding(iC)*100));
     tStart = tic;
-    for iN = 1:nNoise
+    parfor iN = 1:nNoise
         fprintf('Concatenating data for %u%% noise level...\n',int16(noise(iN)*100));
         % Build overall training and test matrices
         X_train = zeros(nNeurons,n_e_train*nBins);
@@ -259,6 +262,8 @@ for iC = 1:nCoding
             %Save Decoding Performance
             rrDC(indy,1) = cc_train;
         end
+        rrNMF_W{iN,1} = rrFeatures;
+        rrNMF_H{iN,1} = rrActCoeff;      
         
         %Save factorized representation of data with the smallest SE
         [~,indy] = min(sqerr_te);       
@@ -268,57 +273,57 @@ for iC = 1:nCoding
         %Take the average decoding performance out of the reruns
         mDC(iN,iC) = mean(rrDC);
         stdDC(iN,iC) = std(rrDC);
-        
+               
         %% Determine how correlated each NMF run is with each other
-        featureCorr = zeros(kFeat(iN,iC),kFeat(iN,iC));
-        fCorr = zeros(kFeat(iN,iC),1);
-        iCorr = zeros(kFeat(iN,iC),1);
-        tcCorr = zeros(kFeat(iN,iC),1);
-        
-        %Mean and standard deviation of the features between runs
-        m_fCorr = NaN(nNMFruns);
-        s_fCorr = NaN(nNMFruns);
-        m_tcCorr = NaN(nNMFruns);
-        s_tcCorr = NaN(nNMFruns);
-        for ii = 1:nNMFruns
-            aFeatures = rrFeatures{ii};
-            aTestCoeff = rrTestCoeff{ii};
-            for jj = 1:nNMFruns
-                bFeatures = rrFeatures{jj};
-                bTestCoeff = rrTestCoeff{jj};
-                
-                %Find the features between iFeatures & jFeatures that 
-                %correspond to the maximum correlation coefficient
-                for iK = 1:kFeat(iN,iC)
-                    featureCorr = [];
-                    for jK = 1:kFeat(iN,iC)
-                        featureCorr = [featureCorr, corr2(aFeatures(:,iK),bFeatures(:,jK))];
-                    end
-                    %Calculate the max correlation of each feature in aFeatures with
-                    %that of each feature in bFeatures & the corresponding index
-                    [fCorr(iK), iCorr(iK)] = max(featureCorr);
-                    bFeatures(:,iCorr(iK)) = 0;
-                    tcCorr(iK) = corr2(aTestCoeff(iK,:),bTestCoeff(iCorr(iK),:));
-                end
- 
-                m_fCorr(ii,jj) = mean(fCorr);
-                s_fCorr(ii,jj) = std(fCorr);
-                m_tcCorr(ii,jj) = mean(tcCorr);
-                s_tcCorr(ii,jj) = std(tcCorr);
-            end
-        end
-
-       mean_fCorr{iN,iC} = m_fCorr;
-       std_fCorr{iN,iC} = s_fCorr;
-       mean_tcCorr{iN,iC} = m_tcCorr;
-       std_tcCorr{iN,iC} = s_tcCorr;
+%         featureCorr = zeros(kFeat(iN,iC),kFeat(iN,iC));
+%         fCorr = zeros(kFeat(iN,iC),1);
+%         iCorr = zeros(kFeat(iN,iC),1);
+%         tcCorr = zeros(kFeat(iN,iC),1);
+%         
+%         %Mean and standard deviation of the features between runs
+%         m_fCorr = NaN(nNMFruns);
+%         s_fCorr = NaN(nNMFruns);
+%         m_tcCorr = NaN(nNMFruns);
+%         s_tcCorr = NaN(nNMFruns);
+%         for ii = 1:nNMFruns
+%             aFeatures = rrFeatures{ii};
+%             aTestCoeff = rrTestCoeff{ii};
+%             for jj = 1:nNMFruns
+%                 bFeatures = rrFeatures{jj};
+%                 bTestCoeff = rrTestCoeff{jj};
+%                 
+%                 %Find the features between iFeatures & jFeatures that 
+%                 %correspond to the maximum correlation coefficient
+%                 for iK = 1:kFeat(iN,iC)
+%                     featureCorr = [];
+%                     for jK = 1:kFeat(iN,iC)
+%                         featureCorr = [featureCorr, corr2(aFeatures(:,iK),bFeatures(:,jK))];
+%                     end
+%                     %Calculate the max correlation of each feature in aFeatures with
+%                     %that of each feature in bFeatures & the corresponding index
+%                     [fCorr(iK), iCorr(iK)] = max(featureCorr);
+%                     bFeatures(:,iCorr(iK)) = 0;
+%                     tcCorr(iK) = corr2(aTestCoeff(iK,:),bTestCoeff(iCorr(iK),:));
+%                 end
+%  
+%                 m_fCorr(ii,jj) = mean(fCorr);
+%                 s_fCorr(ii,jj) = std(fCorr);
+%                 m_tcCorr(ii,jj) = mean(tcCorr);
+%                 s_tcCorr(ii,jj) = std(tcCorr);
+%             end
+%         end
+% 
+%        mean_fCorr{iN,iC} = m_fCorr;
+%        std_fCorr{iN,iC} = s_fCorr;
+%        mean_tcCorr{iN,iC} = m_tcCorr;
+%        std_tcCorr{iN,iC} = s_tcCorr;
         
     end
     
     %Save data as we go along
     d = clock;
     datastr = sprintf('./ResultsNClevel%u_%u%.2u%.2u%.2u%.2u.mat',int16(fCoding(iC)*100),d(1:5));
-    save(datastr,'mean_fCorr','std_fCorr','mean_tcCorr','std_tcCorr','SpatialModules','TestCoeff','TrainCoeff','dctr','dcte','std_dctr','std_dcte');
+    save(datastr,'mean_fCorr','rrNMF_W','rrNMF_H','std_fCorr','mean_tcCorr','std_tcCorr','SpatialModules','TestCoeff','TrainCoeff','dctr','dcte','std_dctr','std_dcte');
     
     tElapsed = toc(tStart);
     fprintf('Time Elapsed for %u%% Non-Coding Level: %3.3f mins\n',int16(fCoding(iC)*100), tElapsed/60);
