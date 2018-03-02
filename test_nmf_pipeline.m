@@ -120,13 +120,10 @@ n_e_test = nStimuli*size(ind_train,2);
 %% Loop over different noise conditions and calculate performance for each
 %Preallocate for parallel processing
 SpatialModules = cell(nNoise,nCoding);
-TestCoeff = cell(nNoise,nCoding);
-TrainCoeff = cell(nNoise,nCoding);
+ActCoeff = cell(nNoise,nCoding);
 kFeat = zeros(nNoise,nCoding);
-dctr = zeros(nNoise,nCoding);
-dcte = zeros(nNoise,nCoding);
-std_dctr = zeros(nNoise,nCoding);
-std_dcte = zeros(nNoise,nCoding);
+mDC = zeros(nNoise,nCoding);
+stdDC = zeros(nNoise,nCoding);
 mean_fCorr = cell(nNoise,nCoding);
 std_fCorr = cell(nNoise,nCoding); 
 mean_tcCorr = cell(nNoise,nCoding);
@@ -144,7 +141,7 @@ load('C:\Users\Freeman\Documents\GitHub\NMF_Fun\Results\KmeansInit\ExampleData_2
 for iC = 1:nCoding
     fprintf('\t %u%% non-coding patterns introduced...\n',int16(fCoding(iC)*100));
     tStart = tic;
-    for iN = 3:nNoise
+    for iN = 1:nNoise
         fprintf('Concatenating data for %u%% noise level...\n',int16(noise(iN)*100));
         % Build overall training and test matrices
         X_train = zeros(nNeurons,n_e_train*nBins);
@@ -206,7 +203,7 @@ for iC = 1:nCoding
             
             %% Select the Optimal Number of components, k, using the 
             % unsupervised SQE formulation
-            [DCperf(iXV),minSQE(iXV), K_cv(iXV)] = select_k(X_train,groups_train,X_test,groups_test);
+            [DCperf(iXV),minSQE(iXV), K_cv(iXV)] = select_k(X_train,groups_train,X_test,groups_test,iN,iC);
             
         end
         
@@ -266,15 +263,11 @@ for iC = 1:nCoding
         %Save factorized representation of data with the smallest SE
         [~,indy] = min(sqerr_te);       
         SpatialModules{iN,iC} = rrFeatures{indy,1};
-        TestCoeff{iN,iC} = rrTestCoeff{indy,1};
-        TrainCoeff{iN,iC} = rrTrainCoeff{indy,1};
+        ActCoeff{iN,iC} = rrActCoeff{indy,1};
         
         %Take the average decoding performance out of the reruns
-        dctr(iN,iC) = mean(rr_ctr);
-        dcte(iN,iC) = mean(rr_cte);
-        
-        std_dctr(iN,iC) = std(rr_ctr);
-        std_dcte(iN,iC) = std(rr_cte);
+        mDC(iN,iC) = mean(rrDC);
+        stdDC(iN,iC) = std(rrDC);
         
         %% Determine how correlated each NMF run is with each other
         featureCorr = zeros(kFeat(iN,iC),kFeat(iN,iC));

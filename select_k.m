@@ -1,4 +1,4 @@
-function [DCmax, minSQE, n_m] = select_k(X_train,groups_train,X_test,groups_test)
+function [DCmax, minSQE, n_m] = select_k(X_train,groups_train,X_test,groups_test,iN,iC)
 % Selects the optimal number of spatiotemporal modules.
 % Input arguments:
 %  X_train      - Training input matrix (size #cells
@@ -15,6 +15,9 @@ function [DCmax, minSQE, n_m] = select_k(X_train,groups_train,X_test,groups_test
 %  n_e_test     - Number of test set trials
 % Output:
 %  k            - Optimal number of spatial modules
+noise = 0:0.1:1;
+noise = [noise, [1.5, 2, 2.5, 3]];
+fCoding = 0:0.06:0.84;
 
 Kmax = size(X_train,2)/2; % Maximum number of modules
 
@@ -38,6 +41,11 @@ for iK = 1:length(k_range)
 
     % Obtain test set activation coefficients for given modules
     [~,H_test,~] = nmf(X_test,iK,W_train);
+    
+    %Save NMF results for later similarity analysis
+    d = clock;
+    datastr = sprintf('./NMFxvalN%uC%u_%u%.2u%.2u%.2u%.2u.mat',int16(noise(iN)*100),int16(fCoding(iC)*100),d(1:5));
+    save(datastr,'W_train','H_Train','H_Test');
     
     % Process activation coefficients for classification
     predictors_train = H_train';
