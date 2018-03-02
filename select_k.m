@@ -45,7 +45,7 @@ for iK = 1:length(k_range)
     %Save NMF results for later similarity analysis
     d = clock;
     datastr = sprintf('./NMFxvalN%uC%u_%u%.2u%.2u%.2u%.2u.mat',int16(noise(iN)*100),int16(fCoding(iC)*100),d(1:5));
-    save(datastr,'W_train','H_Train','H_Test');
+    save(datastr,'W_train','H_train','H_test');
     
     % Process activation coefficients for classification
     predictors_train = H_train';
