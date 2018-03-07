@@ -119,16 +119,20 @@ disp(['Optimizing number of spatiotemporal modules.'...
     ' This can take a while...']);
 
 % Find optimal number of spatiotemporal modules
-% n_m = select_n_m(X_train,groups_train,n_e_train,X_test,groups_test,...
-%     n_e_test);
-n_m=4;
+n_m = select_n_m(X_train,groups_train,n_e_train,X_test,groups_test,...
+    n_e_test);
+
+% Decompose training set
+[W_train,Acal_train,~] = nmf(X_train,iK);
+% Obtain test set activation coefficients for given modules
+[~,Acal_test,~] = nmf(X_test,iK,W_train);
 
 % Obtain spatiotemporal modules from training set
-[Acal_train,Wst] = stnmf(X_train,n_m,n_e_train);
-disp(['Found ' int2str(n_m) ' spatiotemporal modules.']);
-
-% Obtain activation coefficients from test set for given modules
-Acal_test = stnmf(X_test,n_m,n_e_test,Wst);
+% [Acal_train,Wst] = stnmf(X_train,n_m,n_e_train);
+% disp(['Found ' int2str(n_m) ' spatiotemporal modules.']);
+% 
+% % Obtain activation coefficients from test set for given modules
+% Acal_test = stnmf(X_test,n_m,n_e_test,Wst);
 
 % Process activation coefficients for classification
 predictors_train = Acal_train';

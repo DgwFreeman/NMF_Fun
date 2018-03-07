@@ -10,113 +10,123 @@
 % Date: 1/24/18
 %% Parameters
 clear all
-plot_figs = 0;
 nNeurons = 20;
 nTrials = 20;
 nBins = 100;
 nPatterns = 4;
 nStimuli = 4;
 
+%Supervised or Unsupervised X-validation?
+Opt = struct;
+Opt.SV = 0;
+Opt.nXVAL = 10;     %# of x-validation runs
+
 %Gaussian noise to add to each pattern as a % of the sigma_rate
-noise = 0:0.1:1;
-noise = [noise, [1.5, 2, 2.5, 3]];
+noise = [0, 0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 3];
 nNoise = length(noise);
 
 %Fraction of non-coding patterns into stimulus presentation
-fCoding = 0:0.06:0.84;
+fCoding = 0:0.1:0.9;
 nCoding = length(fCoding);
 nSessions = nCoding + nNoise;
 
-% %Create matrix for synthetic data
-% counts = cell(nStimuli,1);
-% trials = cell(nTrials,1);
-% 
-% %% Create Synthetic Data
-% % What is a reasonable mean firing rate and its standard deviation?
-% mean_rate = 10;
-% sigma_rate = 5;
-% 
-% %Parameters of log-normal distribution
-% mu = log(mean_rate^2/sqrt(sigma_rate + mean_rate^2));
-% sigma = sqrt(log(sigma_rate/mean_rate^2 + 1));
-% 
-% %Draw 4 patterns of the firing rates of 100 neurons from the log-normal distribution
-% for ii = 1:nPatterns
-%     Patterns{ii,1} = lognrnd(mu,sigma,nNeurons,1);
-% end
-% 
-% CountMatrix = zeros(nNeurons,nBins);
-% data = repmat(struct,nNoise,nCoding);
-% for iN = 1:nNoise
-%     for iC = 1:nCoding
-%         fprintf('Creating simulated data for %u%% noise & %u%% non-coding patterns...\n',int16(noise(iN)*100),int16(fCoding(iC)*100));
-%         for iStim = 1:nStimuli
-%             %Which Pattern to select
-%             iP = mod(iStim-1,4) + 1;
-%             
-%             %Base Firing Rate Pattern
-%             RatePattern = Patterns{iP};
-%             
-%             %For each neuron and time step, add gaussian noise
-%             for iTrial = 1:nTrials
-%                 %Additive Noise same across all patterns for each trial
-%                 CountMatrix = repmat(RatePattern,1,nBins) + noise(iN)*sigma_rate*randn(nNeurons,nBins);
-%                 
-%                 %Randomly insert "non-coding" patterns into the trial based off
-%                 %the fraction of coding patterns variable fCoding
-%                 nncBins = int8(fCoding(iC)*nBins);
-%                 p = randperm(nBins);
-%                 ind_nc = p(1:nncBins);
-%                 for iNC = 1:length(ind_nc)
-%                     NonCodingPattern = lognrnd(mu,sigma,nNeurons,1) + noise(iN)*sigma_rate*randn(nNeurons,1);
-%                     CountMatrix(:,ind_nc(iNC)) = NonCodingPattern;
-%                 end
-%                 
-%                 %Set negative values to 0
-%                 negPos = CountMatrix < 0;
-%                 CountMatrix(negPos) = 0;
-%                 
-%                 trials{iTrial,1} = CountMatrix;
-%             end
-%             counts{iStim,1} = trials;
-%         end
-%         
-%         %Save data
-%         data(iN,iC).counts = counts;
-%         data(iN,iC).noise = noise(iN);
-%         data(iN,iC).fCoding = fCoding(iC);
-%         
-%     end
-%     
-% end
+%Create matrix for synthetic data
+counts = cell(nStimuli,1);
+trials = cell(nTrials,1);
+
+%% Create Synthetic Data
+% What is a reasonable mean firing rate and its standard deviation?
+mean_rate = 10;
+sigma_rate = 5;
+SNR = mean_rate./(noise*sigma_rate);
+
+%Parameters of log-normal distribution
+mu = log(mean_rate^2/sqrt(sigma_rate + mean_rate^2));
+sigma = sqrt(log(sigma_rate/mean_rate^2 + 1));
+
+%Draw 4 patterns of the firing rates of 100 neurons from the log-normal distribution
+for ii = 1:nPatterns
+    Patterns{ii,1} = lognrnd(mu,sigma,nNeurons,1);
+end
+
+CountMatrix = zeros(nNeurons,nBins);
+data = repmat(struct,nNoise,nCoding);
+for iN = 1:nNoise
+    for iC = 1:nCoding
+        fprintf('Creating simulated data for %u%% noise & %u%% non-coding patterns...\n',int16(noise(iN)*100),int16(fCoding(iC)*100));
+        for iStim = 1:nStimuli
+            %Which Pattern to select
+            iP = mod(iStim-1,4) + 1;
+            
+            %Base Firing Rate Pattern
+            RatePattern = Patterns{iP};
+            
+            %For each neuron and time step, add gaussian noise
+            for iTrial = 1:nTrials
+                %Additive Noise same across all patterns for each trial
+                CountMatrix = repmat(RatePattern,1,nBins) + noise(iN)*sigma_rate*randn(nNeurons,nBins);
+                
+                %Randomly insert "non-coding" patterns into the trial based off
+                %the fraction of coding patterns variable fCoding
+                nncBins = int8(fCoding(iC)*nBins);
+                p = randperm(nBins);
+                ind_nc = p(1:nncBins);
+                for iNC = 1:length(ind_nc)
+                    NonCodingPattern = lognrnd(mu,sigma,nNeurons,1) + noise(iN)*sigma_rate*randn(nNeurons,1);
+                    CountMatrix(:,ind_nc(iNC)) = NonCodingPattern;
+                end
+                
+                %Set negative values to 0
+                negPos = CountMatrix < 0;
+                CountMatrix(negPos) = 0;
+                
+                trials{iTrial,1} = CountMatrix;
+            end
+            counts{iStim,1} = trials;
+        end
+        
+        %Save data
+        data(iN,iC).counts = counts;
+        data(iN,iC).noise = noise(iN);
+        data(iN,iC).fCoding = fCoding(iC);
+        
+    end
+    
+end
 
 %% Randomly separate data into training set and test set
-%For Unsupervised Case, separate data 50/50
-%Create nXVAL different combinations of the data split
-nXVAL = 10;
-ind_train = zeros(nXVAL,nTrials/2);
-ind_test = zeros(nXVAL,nTrials/2);
-for iXV = 1:nXVAL
-    p = randperm(nTrials);
-    %Training indices
-    ind_train(iXV,:) = p(1:ceil(nTrials/2));
-    %Test indices
-    ind_test(iXV,:) = p((ceil(nTrials/2)+1):end);
+if Opt.SV == 1
+    %For Supervised Case, perform the leave-1-out cross-validation
+    %Random permutation of trials
+    pTrials = randperm(nTrials);
+    
+    % Total number of training samples
+    n_e_train = nStimuli*(nTrials-1);
+    % Total number of test samples
+    n_e_test = nStimuli;
+    
+    %Start index at end of vector of trial indices to chose from
+    TestIndex = nTrials;
+    %Number of x-validation iterations
+    Opt.nXVAL = nTrials;
+else
+    %For Unsupervised Case, separate data 50/50
+    %Create nXVAL different combinations of the data split
+    Opt.nXVAL = 10;
+    ind_train = zeros(Opt.nXVAL,nTrials/2);
+    ind_test = zeros(Opt.nXVAL,nTrials/2);
+    for iXV = 1:Opt.nXVAL
+        p = randperm(nTrials);
+        %Training indices
+        ind_train(iXV,:) = p(1:ceil(nTrials/2));
+        %Test indices
+        ind_test(iXV,:) = p((ceil(nTrials/2)+1):end);
+    end
+    % Total number of training samples
+    n_e_train = nStimuli*size(ind_train,2);
+    % Total number of test samples
+    n_e_test = nStimuli*size(ind_train,2);
 end
-% Total number of training samples
-n_e_train = nStimuli*size(ind_train,2);
-% Total number of test samples
-n_e_test = nStimuli*size(ind_train,2);
-
-%For Supervised Case, perform the leave-1-out cross-validation
-% % Random permutation of trials
-% pTrials = randperm(nTrials);
-%
-% % Total number of training samples
-% n_e_train = nStimuli*(length(pTrials)-1);
-% % Total number of test samples
-% n_e_test = nStimuli;
-
 %% Loop over different noise conditions and calculate performance for each
 %Preallocate for parallel processing
 SpatialModules = cell(nNoise,nCoding);
@@ -124,98 +134,98 @@ ActCoeff = cell(nNoise,nCoding);
 kFeat = zeros(nNoise,nCoding);
 mDC = zeros(nNoise,nCoding);
 stdDC = zeros(nNoise,nCoding);
-mean_fCorr = cell(nNoise,nCoding);
-std_fCorr = cell(nNoise,nCoding); 
-mean_tcCorr = cell(nNoise,nCoding);
-std_tcCorr = cell(nNoise,nCoding);
 
-rrNMF_W = cell(nCoding,1);
-rrNMF_H = cell(nCoding,1);
+rrNMF_W = cell(nNoise,1);
+rrNMF_H = cell(nNoise,1);
+rrNMF_xv = cell(nNoise,1);
 
 %Save Data used for analysis
-% d = clock;
-% datastr = sprintf('./ExampleData_%u%.2u%.2u%.2u%.2u.mat',d(1:5));
-% save(datastr);
+d = clock;
+datastr = sprintf('./SimulatedData_%u%.2u%.2u%.2u%.2u.mat',d(1:5));
+save(datastr);
 
-fprintf('Loading Data...\n');
-load('C:\Users\Freeman\Documents\GitHub\NMF_Fun\Results\KmeansInit\ExampleData_201802161635.mat','data');
-poolobj = parpool(15);
+% fprintf('Loading Data...\n');
+% load('C:\Users\Freeman\Documents\GitHub\NMF_Fun\Results\KmeansInit\ExampleData_201802161635.mat','data');
+poolobj = parpool(10);
 
 for iC = 1:nCoding
-    fprintf('\t %u%% non-coding patterns introduced...\n',int16(fCoding(iC)*100));
+    fprintf('%u%% non-coding patterns introduced...\n',int16(fCoding(iC)*100));
     tStart = tic;
-    parfor iN = 1:nNoise
-        fprintf('Concatenating data for %u%% noise level...\n',int16(noise(iN)*100));
+    for iN = 1:nNoise
+        fprintf('\t Concatenating data for %u%% noise level...\n',int16(noise(iN)*100));
         % Build overall training and test matrices
         X_train = zeros(nNeurons,n_e_train*nBins);
         X_test = zeros(nNeurons,n_e_test*nBins);
         groups_train = zeros(n_e_train*nBins,1);
         groups_test = zeros(n_e_test*nBins,1);
         
-        %% Leave 1 Out cross validation
-        %Loop over each "leave 1 out" interation of the cross-validation
-        %algorithm to obtain the best k based on the decoding performance
-        %Start index at end of vector of trial indices to chose from
-%         TestIndex = length(pTrials);
-%         DCperf = zeros(length(pTrials),1);
-%         K_cv = zeros(length(pTrials),1);
-%         minSQE = zeros(length(pTrials),1);
+        %% Cross Validation 
+        DCperf = zeros(Opt.nXVAL,1);
+        K_cv = zeros(Opt.nXVAL,1);
+        minSQE = zeros(Opt.nXVAL,1);
+        xvNMF = cell(Opt.nXVAL,3);
         
-        %% Random sub-sampling validation
-        DCperf = zeros(nXVAL,1);
-        K_cv = zeros(nXVAL,1);
-        minSQE = zeros(nXVAL,1);
-        for iXV = 1:nXVAL
+        %Loop over x-validation runs
+        for iXV = 1:Opt.nXVAL
             offset_train = 0;
             offset_test = 0;
             
             %Loop over the different stiumuli & trials to create matrices
             for iStim = 1:nStimuli
-                %Supervised xval 
-%                 for iTrial = 1:nTrials
-%                     if iTrial ~= TestIndex
-%                         X_train(:,offset_train+(1:nBins)) = data(iN,iC).counts{iStim}{pTrials(iTrial)};
-%                         %Training Class labels
-%                         groups_train(offset_train+(1:nBins),1) = iStim;
-%                         %Update offset for training matrix
-%                         offset_train = offset_train + nBins;
-%                     end
-%                 end
-%                 
-%                 X_test(:,offset_test+(1:nBins)) = data(iN,iC).counts{iStim}{pTrials(TestIndex)};
-%                 %Test class labels
-%                 groups_test(offset_test+(1:nBins),1) = iStim;
-%                 
-%                 %Update offset for test matrix
-%                 offset_test = offset_test + nBins;
-%                 %Update which trial is used for testing
-%                 TestIndex = TestIndex - 1;
-                
-                %Unsupervised cross-validation, separate the training/test
-                for iTrial = 1:length(ind_train)
-                    X_train(:,offset_train+(1:nBins)) = data(iN,iC).counts{iStim}{ind_train(iXV,iTrial)};
-                    groups_train(offset_train+(1:nBins),1) = iStim;
-                    offset_train = offset_train + nBins;
-                end
-                for iTrial = 1:length(ind_test)
-                    X_test(:,offset_test+(1:nBins)) = data(iN,iC).counts{iStim}{ind_test(iXV,iTrial)};
+                if Opt.SV == 1
+                    %Supervised x-validation
+                    for iTrial = 1:nTrials
+                        if iTrial ~= TestIndex
+                            X_train(:,offset_train+(1:nBins)) = data(iN,iC).counts{iStim}{pTrials(iTrial)};
+                            %Training Class labels
+                            groups_train(offset_train+(1:nBins),1) = iStim;
+                            %Update offset for training matrix
+                            offset_train = offset_train + nBins;
+                        end
+                    end
+                    
+                    X_test(:,offset_test+(1:nBins)) = data(iN,iC).counts{iStim}{pTrials(TestIndex)};
+                    %Test class labels
                     groups_test(offset_test+(1:nBins),1) = iStim;
+                    
+                    %Update offset for test matrix
                     offset_test = offset_test + nBins;
+                    %Update which trial is used for testing
+                    TestIndex = TestIndex - 1;
+                else
+                    %Unsupervised x-validation, separate the training/test
+                    for iTrial = 1:length(ind_train)
+                        X_train(:,offset_train+(1:nBins)) = data(iN,iC).counts{iStim}{ind_train(iXV,iTrial)};
+                        groups_train(offset_train+(1:nBins),1) = iStim;
+                        offset_train = offset_train + nBins;
+                    end
+                    for iTrial = 1:length(ind_test)
+                        X_test(:,offset_test+(1:nBins)) = data(iN,iC).counts{iStim}{ind_test(iXV,iTrial)};
+                        groups_test(offset_test+(1:nBins),1) = iStim;
+                        offset_test = offset_test + nBins;
+                    end
                 end
             end
             
-            %% Select the Optimal Number of components, k, using the 
-            % unsupervised SQE formulation
-            [DCperf(iXV),minSQE(iXV), K_cv(iXV)] = select_k(X_train,groups_train,X_test,groups_test,iN,iC);
-            
+            %Save matricces used for xval for later similarity analysis
+            xvNMF{iXV,2} = X_train;
+            xvNMF{iXV,3} = X_test;
+            %% Select the Optimal Number of components, k, using the either
+            % the unsupervised SQE formulation or similarity score, or the
+            % supervised decoding performance
+            Opt.iN = iN;
+            Opt.iC = iC;
+            [DCperf(iXV),minSQE(iXV), K_cv(iXV), xvNMF{iXV,1}] = select_k(X_train,groups_train,X_test,groups_test,Opt);
         end
+        
+        %Save X-Validation NMF runs for future analysis
+        rrNMF_xv{iN,1} = xvNMF;
         
         %Out of all of the "Leave 1 out" iterations, which one resulted in
         %the smallest reconstruction error out of the median values of K
         pos = find(K_cv == median(K_cv));
         [~,iK] = min(minSQE(pos));
         kFeat(iN,iC) = K_cv(pos(iK));
-        TestIndex = pos(iK);
         
         %% Now that we've determined the number of components to extract
         %create the whole trial-concatenated matrix to input into the NMF
@@ -266,7 +276,7 @@ for iC = 1:nCoding
         rrNMF_H{iN,1} = rrActCoeff;      
         
         %Save factorized representation of data with the smallest SE
-        [~,indy] = min(sqerr_te);       
+        [~,indy] = min(SQE);       
         SpatialModules{iN,iC} = rrFeatures{indy,1};
         ActCoeff{iN,iC} = rrActCoeff{indy,1};
         
@@ -278,7 +288,7 @@ for iC = 1:nCoding
     %Save data as we go along
     d = clock;
     datastr = sprintf('./ResultsNClevel%u_%u%.2u%.2u%.2u%.2u.mat',int16(fCoding(iC)*100),d(1:5));
-    save(datastr,'rrNMF_W','rrNMF_H','SpatialModules','ActCoeff','mDC','stdDC');
+    save(datastr,'rrNMF_W','rrNMF_H','rrNMF_xv','kFeat','SpatialModules','ActCoeff','mDC','stdDC');
     
     tElapsed = toc(tStart);
     fprintf('Time Elapsed for %u%% Non-Coding Level: %3.3f mins\n',int16(fCoding(iC)*100), tElapsed/60);

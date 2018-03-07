@@ -47,17 +47,20 @@ indy = 0;
 for i_m = 1:length(m_range)
     n_m = m_range(i_m);
     % Decompose training set
-    [Acal_train,Wst] = stnmf(X_train,n_m,n_e_train);
+    [W_train,Acal_train,~] = nmf(X_train,n_m);
     % Obtain test set activation coefficients for given modules
-    Acal_test = stnmf(X_test,n_m,n_e_test,Wst);
+    [~,Acal_test,~] = nmf(X_test,n_m,W_train);
+    
+    % Decompose training set
+%     [Acal_train,Wst] = stnmf(X_train,n_m,n_e_train);
+%     % Obtain test set activation coefficients for given modules
+%     Acal_test = stnmf(X_test,n_m,n_e_test,Wst);
     % Process activation coefficients for classification
     predictors_train = Acal_train';
     predictors_test = Acal_test';
     [cc_train,cc_test] = ldacc(predictors_train,groups_train,predictors_test,groups_test);
     ctr(i_m) = cc_train;
     cte(i_m) = cc_test;
-    tElapsed = toc(tStart);
-    fprintf('# of Modules: %u, Time Elapsed: %3.3f\n',i_m,tElapsed);
     
     % Determine if we've found a local max yet
     [currMax, currMaxIndex] = max(cte);
