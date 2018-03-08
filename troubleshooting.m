@@ -4,8 +4,8 @@
 
 clear all
 cd C:\Users\Freeman\Documents\GitHub\NMF_Fun
-NoInit = load('./Results/NoKmeansInit/NMFResults_201802161952.mat');
-KmInit = load('./Results/KmeansInit/NMFResults_201802171538.mat');
+NoInit = load('.\Results\NMF_Similarity\No_K_Means\NMFResults_201803062258.mat');
+KmInit = load('.\Results\NMF_Similarity\K_MeansInit\NMFResults_201803062210.mat');
 load('./Results/KmeansInit/ExampleData_201802161635.mat','data','nPatterns',...
     'nCoding','nNoise','nStimuli','nTrials','nSessions','n_e_test',...
     'n_e_train','noise','fCoding','sigma_rate','Patterns');

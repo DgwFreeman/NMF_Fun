@@ -14,6 +14,7 @@ maxFeat = max(nFeat);
 %% Find the reconstruction error for each value of k in each xval run
 sqerr_tr = NaN(maxFeat,nXVAL);
 sqerr_te = NaN(maxFeat,nXVAL);
+SimilarityScore = NaN(maxFeat,nXVAL);
 for iXV = 1:nXVAL
     ExtrFeat = xvNMF{iXV,1}; 
     X_train = xvNMF{iXV,2}; 
@@ -30,12 +31,14 @@ for iXV = 1:nXVAL
 end
 %Loop through each value of k to perform a similarity analysis
 for iK = 1:maxFeat
+     
     %Which run should we compare the rest to?
     [mSQE, iSQE] = min(sqerr_te(iK,:));
     W1 = xvNMF{iSQE,1}{iK,1};
     H1 = xvNMF{iSQE,1}{iK,2};
     
     for iXV = 1:nXVAL
+        if iK > nFeat(iXV), continue;end
         ExtrFeat = xvNMF{iXV,1};
         if iXV == iSQE
             SimilarityScore(iK,iXV) = 1;
@@ -49,17 +52,17 @@ for iK = 1:maxFeat
 end
 
 %% Plot 
-figure
-for iK = 1:maxFeat
-    pos = SimilarityScore(iK,:) ~= 1;
-    mSS(iK) = mean(SimilarityScore(iK,pos));
-    plot(iK,SimilarityScore(iK,pos),'.k','MarkerSize',10),hold on
-end
-plot(1:maxFeat,mSS,'-b','LineWidth',2),hold on
-xlabel('Number of Components');
-ylabel('Similarity Score');
-xlim([0,8])
-title('20% Additive Noise')
+% figure
+% for iK = 1:maxFeat
+%     pos = SimilarityScore(iK,:) ~= 1;
+%     mSS(iK) = mean(SimilarityScore(iK,pos));
+%     plot(iK,SimilarityScore(iK,pos),'.k','MarkerSize',10),hold on
+% end
+% plot(1:maxFeat,mSS,'-b','LineWidth',2),hold on
+% xlabel('Number of Components');
+% ylabel('Similarity Score');
+% xlim([0,8])
+% title('20% Additive Noise')
 
 end
 

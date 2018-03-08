@@ -135,21 +135,6 @@ kFeat = zeros(nNoise,nCoding);
 mDC = zeros(nNoise,nCoding);
 stdDC = zeros(nNoise,nCoding);
 
-        DCperf = zeros(Opt.nXVAL,1);
-        K_cv = zeros(Opt.nXVAL,1);
-        minSQE = zeros(Opt.nXVAL,1);
-        xvNMF = cell(Opt.nXVAL,3);
-        X_train = zeros(nNeurons,n_e_train*nBins);
-        X_test = zeros(nNeurons,n_e_test*nBins);
-        X = zeros(nNeurons,nTrials*nBins);
-        groups_X = zeros(nTrials*nBins,1);
-        groups_train = zeros(n_e_train*nBins,1);
-        groups_test = zeros(n_e_test*nBins,1);
-        SQE = zeros(nNMFruns,1);
-        rrFeatures = cell(nNMFruns,1);
-        rrActCoeff = cell(nNMFruns,1);
-        rrDC = zeros(nNMFruns,1);
-
 rrNMF_W = cell(nNoise,1);
 rrNMF_H = cell(nNoise,1);
 rrNMF_xv = cell(nNoise,1);
@@ -166,7 +151,7 @@ save(datastr);
 for iC = 1:nCoding
     fprintf('%u%% non-coding patterns introduced...\n',int16(fCoding(iC)*100));
     tStart = tic;
-    for iN = 3:nNoise
+    for iN = 1:nNoise
         fprintf('\t Concatenating data for %u%% noise level...\n',int16(noise(iN)*100));
         % Build overall training and test matrices
         X_train = zeros(nNeurons,n_e_train*nBins);
@@ -222,13 +207,14 @@ for iC = 1:nCoding
                 end
             end
             
-            %Save matricces used for xval for later similarity analysis
-            xvNMF{iXV,2} = X_train;
-            xvNMF{iXV,3} = X_test;
             %% Select the Optimal Number of components, k, using the either
             % the unsupervised SQE formulation or similarity score, or the
             % supervised decoding performance
             [DCperf(iXV),minSQE(iXV), K_cv(iXV), xvNMF{iXV,1}] = select_k(X_train,groups_train,X_test,groups_test,Opt);
+
+            %Save matricces used for xval for later similarity analysis
+            xvNMF{iXV,2} = X_train;
+            xvNMF{iXV,3} = X_test;
         end
         
         %Save X-Validation NMF runs for future analysis
@@ -237,7 +223,7 @@ for iC = 1:nCoding
         %Out of all of the "Leave 1 out" iterations, which one resulted in
         %the smallest reconstruction error out of the median values of K
         pos = find(K_cv == median(K_cv));
-        [mm,iK] = min(minSQE(pos));
+        [~,iK] = min(minSQE(pos));
         kFeat(iN,iC) = K_cv(pos(iK));
         
         %% Now that we've determined the number of components to extract
