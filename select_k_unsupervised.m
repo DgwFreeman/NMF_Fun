@@ -1,4 +1,4 @@
-function [cte, minSQE, iK, ExtrFeat] = select_k(X_train,groups_train,X_test,groups_test,Opt)
+function [DCmax, minSQE, n_m] = select_k(X_train,groups_train,X_test,groups_test,Opt)
 % Selects the optimal number of spatiotemporal modules.
 % Input arguments:
 %  X_train      - Training input matrix (size #cells
@@ -34,22 +34,24 @@ prevMaxIndex = 0;
 indy = 0;
 dtl = zeros(Kmax,1);
 
-%Save the test and training data for later use
-% d = clock;
-% datastr = sprintf('./NMFxvalN%uC%u_%u%.2u%.2u%.2u%.2u%.2u.mat',int16(noise(Opt.iN)*100),int16(fCoding(Opt.iC)*100),d(1:5),floor(d(6)));
-% save(datastr,'X_train','X_test');
+%Save 
 
-for iK = 1:10
+%Save the test and training data for later use
+d = clock;
+datastr = sprintf('./NMFxvalN%uC%u_%u%.2u%.2u%.2u%.2u%.2u.mat',int16(noise(Opt.iN)*100),int16(fCoding(Opt.iC)*100),d(1:5),floor(d(6)));
+save(datastr,'X_train','X_test');
+
+for iK = 1:Kmax
     % Decompose training set
     [W_train,H_train,~] = nmf(X_train,iK);
 
     % Obtain test set activation coefficients for given modules
     [~,H_test,~] = nmf(X_test,iK,W_train);
     
-    %Save Extracted Features for similarity analysis
-    ExtrFeat{iK,1} = W_train;
-    ExtrFeat{iK,2} = H_train;
-    ExtrFeat{iK,3} = H_test;
+    %Save NMF results for later similarity analysis
+    d = clock;
+    datastr = sprintf('./NMFxvalN%uC%uK%u_%u%.2u%.2u%.2u%.2u%.2u.mat',int16(noise(Opt.iN)*100),int16(fCoding(Opt.iC)*100),iK,d(1:5),floor(d(6)));
+    save(datastr,'W_train','H_train','H_test');
     
     % Process activation coefficients for classification
     predictors_train = H_train';
@@ -78,8 +80,8 @@ for iK = 1:10
             SQE_Slope = (sqerr_te(iK) - sqerr_te(1))/(iK - 1);
             b1 = sqerr_te(iK) - SQE_Slope*iK;
             xK =1:iK;
-%             plot(xK,sqerr_te,'-ok'),hold on
-%             plot(xK,SQE_Slope*xK + b1,'-r'),hold on
+            %         plot(xK,sqerr_te,'-ok'),hold on
+            %         plot(xK,SQE_Slope*xK + b1,'-r'),hold on
             
             ii = iK - 1;
             m2 = (-1/SQE_Slope);
@@ -89,7 +91,7 @@ for iK = 1:10
             xx = (b2 - b1)/(SQE_Slope - m2);
             yy = SQE_Slope*xx + b1;
             
-%             plot([ii,xx],[sqerr_te(ii),yy],'--b'),hold on
+            %         plot([ii,xx],[sqerr_te(ii),yy],'--b'),hold on
             dtl(ii,1) = sqrt((yy - sqerr_te(ii))^2 + (xx - ii)^2); 
         end
         
@@ -99,7 +101,7 @@ for iK = 1:10
     end
 
     % Break the loop if we've found the elbow
-%     if indy > 2, break; end
+    if indy > 2, break; end
     
     prevMax = currMax;
     prevMaxIndex = currMaxIndex;
@@ -111,8 +113,8 @@ end
 minSQE = sqerr_te(currMaxIndex);
 %Output the number of parameters selected
 iK = currMaxIndex;
+n_m = k_range(iK);
 %Output the decoding performance for that k-value
 [DCmax,~] = max(cte(:));
-cte = cte(1:length(sqerr_te));
 
 end

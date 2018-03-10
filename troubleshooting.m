@@ -10,7 +10,9 @@ load('./Results/KmeansInit/ExampleData_201802161635.mat','data','nPatterns',...
     'nCoding','nNoise','nStimuli','nTrials','nSessions','n_e_test',...
     'n_e_train','noise','fCoding','sigma_rate','Patterns');
 
+D = X_test.*(log(X_test./(W_train*H_test)))-X_test+W_train*H_test;
 
+norm(D,'fro')^2
 %% Compare decoding performance for Kmeans and random seed Initializations 
 figure
 subplot(1,2,1)

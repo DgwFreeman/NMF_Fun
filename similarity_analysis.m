@@ -1,5 +1,4 @@
-function SimilarityScore = similarity_analysis(xvNMF)
-
+function [SimilarityScore,sqerr_te] = similarity_analysis(xvNMF)
 
 nXVAL = length(xvNMF);
 nFeat = zeros(nXVAL,1);
@@ -45,7 +44,7 @@ for iK = 1:maxFeat
         else
             W2 = xvNMF{iXV,1}{iK,1};
             H2 = xvNMF{iXV,1}{iK,2};
-            SimilarityScore(iK,iXV) = helper.similarity(W1,H1,W2,H2);
+            SimilarityScore(iK,iXV) = similarity(W1,H1,W2,H2);
         end
         
     end

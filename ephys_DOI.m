@@ -1,5 +1,5 @@
 %% NMF Analysis Script for Angie's E-Phys Spike Train data for DOI 
-load('C:\Users\Freeman\Documents\GitHub\NMF_Fun\drift_ephys_080715.mat')
+load('.\drift_ephys_080715.mat')
 
 %% Parameters
 %Bin size in sec
@@ -107,7 +107,7 @@ minSQE = zeros(nXVAL,1);
 xvNMF = cell(nXVAL,3);
 
 %Loop over x-validation runs
-for iXV = 10:nXVAL
+for iXV = 1:nXVAL
     offset_train = 0;
     offset_test = 0;
     
@@ -137,9 +137,12 @@ for iXV = 10:nXVAL
     %Take only the data we concatenated
     X_train = X_train(:,1:offset_train);
     X_test = X_train(:,1:offset_test);
+    groups_train = groups_train(1:offset_train);
+    groups_test = groups_test(1:offset_test);
     
     %Select the Optimal Number of components, k, using the unsupervised SQE
     %or the supervised decoding performance
+    Opt.SV = 0;
     [DCperf(iXV),minSQE(iXV), K_cv(iXV), xvNMF{iXV,1}] = select_k(X_train,groups_train,X_test,groups_test,Opt);
     
     %Save matricces used for xval for later similarity analysis
