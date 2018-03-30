@@ -1,7 +1,7 @@
 % DataDir = 'C:\Users\Freeman\Documents\GitHub\NMF_Fun\Results\NMF_Similarity\K_MeansInit\';
 % Filelist = dir(fullfile(DataDir,'*.mat'));
 % load(fullfile(DataDir,Filelist(2).name));
-load('./XvalSimilarity.mat');
+load('./XvalSimilarity_Rand.mat');
 
 noise = [0, 0.1, 0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 3];
 nNoise = length(noise);
@@ -20,6 +20,7 @@ for iN = 4:nNoise
 
     mSS = [];
     stdSS = [];
+    
     for iK = 1:maxFeat
         pos = SimilarityScore(iK,:) ~= 1;
         mSS(iK) = mean(SimilarityScore(iK,pos));
@@ -30,7 +31,7 @@ for iN = 4:nNoise
         
         mmDC(iK,1) = mean(DC(iK,:));
         ssDC(iK,1) = std(DC(iK,:));
-        plot(iK,SimilarityScore(iK,pos)*100,'.k','MarkerSize',10),hold on
+        plot(iK,SimilarityScore(iK,pos)*100,'.r','MarkerSize',10,'Color',cc(iN,:)),hold on
     end
     a1 = plot(1:maxFeat,mSS*100,'-o','LineWidth',2,'Color',cc(iN,:)),hold on
     legendStr{iN} = sprintf('%u%% Noise',int16(noise(iN)*100));

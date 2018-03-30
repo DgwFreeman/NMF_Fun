@@ -34,7 +34,7 @@ for iK = 1:maxFeat
     %Which run should we compare the rest to?
     [mSQE, iSQE] = min(sqerr_te(iK,:));
     W1 = xvNMF{iSQE,1}{iK,1};
-    H1 = xvNMF{iSQE,1}{iK,2};
+    H1 = xvNMF{iSQE,1}{iK,3};
     
     for iXV = 1:nXVAL
         if iK > nFeat(iXV), continue;end
@@ -43,7 +43,7 @@ for iK = 1:maxFeat
             SimilarityScore(iK,iXV) = 1;
         else
             W2 = xvNMF{iXV,1}{iK,1};
-            H2 = xvNMF{iXV,1}{iK,2};
+            H2 = xvNMF{iXV,1}{iK,3};
             SimilarityScore(iK,iXV) = similarity(W1,H1,W2,H2);
         end
         
